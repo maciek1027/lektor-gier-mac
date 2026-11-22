@@ -1,0 +1,3 @@
+Tu wrzuć paczkę lektora GameReader 2.0 (plik .zip), np. paczkę GTA VI z https://gamereader.pl
+Opcjonalnie: krótki film .mp4 z napisami GTA VI — przycisk „Demo” w panelu zagra na nim lektora.
+Nic z tego folderu nie trafia do gita (paczki należą do ich autorów).

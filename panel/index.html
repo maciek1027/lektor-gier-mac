@@ -1,0 +1,436 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GTA Lektor</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Lektor">
+<meta name="theme-color" content="#140a2c">
+<link rel="apple-touch-icon" href="/ikona-180.png">
+<link rel="manifest" href="/manifest.json">
+<style>
+:root{--ink:#fff;--ink2:rgba(255,255,255,.72);--ink3:rgba(255,255,255,.5);--card:rgba(26,12,52,.72);--line:rgba(255,255,255,.14);
+--pink:#ff4f9a;--orange:#ff9a4a;--ok:#4be3a3;--warn:#ffcc66;--bad:#ff6b6b}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#140a2c;color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif}
+body{background:linear-gradient(90deg,rgba(16,7,36,.94) 0%,rgba(16,7,36,.80) 55%,rgba(16,7,36,.45) 100%),url(/grafiki/tlo.jpg) right center/cover fixed}
+.wrap{max-width:760px;margin:0 auto;padding:26px 24px 40px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(160deg,#3a1670,#b0267a 55%,#ff7a45);display:grid;place-items:center;flex:none}
+h1{font-size:26px;margin:0;font-weight:700;letter-spacing:.3px}
+.sub{color:var(--ink2);font-size:14px;margin:0}
+.pill{margin-left:auto;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.1);border:1px solid var(--line);white-space:nowrap}
+.pill.ok{background:rgba(75,227,163,.16);border-color:rgba(75,227,163,.5);color:var(--ok)}
+.pill.run{background:rgba(255,79,154,.18);border-color:rgba(255,79,154,.6);color:#ffb3d3}
+.pill.bad{background:rgba(255,107,107,.16);border-color:rgba(255,107,107,.55);color:#ffb0b0}
+.alert{border-radius:14px;padding:12px 16px;margin:0 0 14px;font-size:14px;display:none;align-items:center;gap:12px}
+.alert.show{display:flex}
+.alert.bad{background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.5)}
+.alert.warn{background:rgba(255,204,102,.13);border:1px solid rgba(255,204,102,.45)}
+.alert span{flex:1}
+.alert button{flex:none}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.step{font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);margin:0 0 12px}
+.profiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.prof{border:2px solid transparent;border-radius:16px;background:rgba(255,255,255,.05);padding:0 0 12px;cursor:pointer;text-align:center;transition:transform .12s,border-color .12s,background .12s;overflow:hidden;color:var(--ink);font:inherit}
+.prof:hover{transform:translateY(-2px);background:rgba(255,255,255,.09)}
+.prof.on{border-color:var(--pink);background:rgba(255,79,154,.12);box-shadow:0 0 0 4px rgba(255,79,154,.15)}
+.prof img{width:100%;aspect-ratio:1;object-fit:cover;display:block;margin-bottom:8px}
+.prof b{display:block;font-size:15px}
+.prof span{display:block;font-size:12.5px;color:var(--ink2);padding:2px 8px 0;line-height:1.35}
+.row{display:flex;align-items:center;gap:12px;margin:10px 0}
+.row label{min-width:132px;color:var(--ink2);font-size:14px}
+select,button{font:inherit;color:var(--ink)}
+select{flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:10px;padding:9px 12px;-webkit-appearance:none;appearance:none}
+select option{color:#111}
+input[type=range]{flex:1;accent-color:var(--pink);height:28px}
+.vol{min-width:52px;text-align:right;font-weight:700}
+button{touch-action:manipulation}  /* fast taps on + / − must not zoom the page on iPhone */
+.volBox{margin:12px 0 4px}
+.volHead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:6px}
+.volHead label{color:var(--ink2);font-size:14px}
+.volCtl{display:flex;align-items:center;gap:10px}
+.krok{width:44px;height:44px;padding:0;font-size:24px;line-height:1;flex:none}
+.btn{border:1px solid var(--line);background:rgba(255,255,255,.08);border-radius:12px;padding:10px 16px;cursor:pointer;font-weight:600}
+.btn:hover{background:rgba(255,255,255,.14)}
+.btn.small{padding:8px 12px;font-size:13px}
+.hint{display:flex;gap:10px;align-items:flex-start;background:rgba(255,204,102,.10);border:1px solid rgba(255,204,102,.32);border-radius:12px;padding:10px 14px;font-size:13.5px;color:#ffe2a8;margin-top:12px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
+.play{flex:1;min-width:220px;border:none;border-radius:16px;padding:18px 20px;font-size:19px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--pink),var(--orange));box-shadow:0 10px 30px rgba(255,79,154,.35);display:flex;align-items:center;justify-content:center;gap:10px}
+.play:hover{filter:brightness(1.07)}
+.play.stop{background:linear-gradient(90deg,#5b2a8a,#8a2a5f);box-shadow:none}
+.lines{list-style:none;margin:0;padding:0}
+.lines li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px}
+.lines li:last-child{border-bottom:none}
+.lines time{color:var(--ink3);font-size:12.5px;min-width:62px;padding-top:2px}
+.lines li:first-child span{font-size:17px;font-weight:600}
+.empty{color:var(--ink3);font-size:14px;margin:0}
+details summary{cursor:pointer;color:var(--ink2);font-weight:600;list-style:none}
+details summary::before{content:"▸ ";}
+details[open] summary::before{content:"▾ ";}
+.radios{display:flex;gap:8px;flex-wrap:wrap}
+.radios label{min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink);background:rgba(255,255,255,.05)}
+.radios input{accent-color:var(--pink);margin-right:6px}
+.log{font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--ink3);white-space:pre-wrap;max-height:140px;overflow:auto;margin:10px 0 0}
+.pilot{display:flex;gap:18px;align-items:flex-start}
+.qr{flex:none;background:#fff;border-radius:14px;padding:10px;line-height:0}
+.qr img{width:170px;height:170px;image-rendering:pixelated;image-rendering:crisp-edges}
+.pilot ol{margin:0 0 10px;padding-left:20px;color:var(--ink2);font-size:14px}
+.small{font-size:12.5px;color:var(--ink3);margin:6px 0}
+#pilotAdres{word-break:break-all}
+.ok{color:var(--ok)}
+.telbtn{width:100%;border:none;border-radius:16px;padding:16px;font-size:18px;font-weight:800;cursor:pointer;color:#1a0b33;background:linear-gradient(90deg,#4be3a3,#9af0c8)}
+.telbtn.on{background:rgba(75,227,163,.15);color:var(--ok);border:1px solid rgba(75,227,163,.5)}
+.teldiag{font-size:13px;color:var(--ink2);margin:10px 0 0}
+/* phone: one thumb — big controls, Play/Stop pinned to the bottom edge */
+body.tel{background-attachment:scroll;background-position:70% top}
+body.tel .wrap{padding:calc(14px + env(safe-area-inset-top)) 14px calc(118px + env(safe-area-inset-bottom))}
+body.tel h1{font-size:22px} body.tel .sub{display:none} body.tel .logo{width:44px;height:44px}
+body.tel .macOnly{display:none!important}
+body.tel .actions{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(rgba(20,10,44,0),#140a2c 34%);flex-wrap:nowrap}
+body.tel .play{min-width:0;padding:20px 14px;font-size:20px}
+body.tel #demo{flex:none;padding:0 14px;border-radius:16px}
+body.tel input[type=range]{height:44px}
+body.tel select{padding:12px}
+body.tel .krok{width:54px;height:54px;font-size:30px}
+body.tel .row label{min-width:86px}
+body:not(.tel) .telOnly{display:none!important}
+@media (max-width:620px){.profiles{grid-template-columns:1fr 1fr}.prof span{display:none}.prof{padding-bottom:10px}.prof img{margin-bottom:6px}.row label{min-width:96px}.pilot{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M8 21h8"/></svg></div>
+  <div><h1>GTA Lektor</h1><p class="sub">Polski lektor do GTA VI — czyta napisy z gry</p></div>
+  <div class="pill" id="pill">Łączę…</div>
+</header>
+
+<div class="alert bad" id="alPaczka"><span id="alPaczkaTxt"></span><button class="btn small macOnly" onclick="api('/api/folder-paczek')">Otwórz folder paczek</button><button class="btn small" onclick="api('/api/paczka')">Sprawdź ponownie</button></div>
+<div class="alert warn" id="alZgoda"><span>macOS musi pozwolić „GTA Lektor” widzieć ekran (napisy gry). Kliknij, zaznacz „GTA Lektor” na liście i uruchom panel jeszcze raz.</span><button class="btn small macOnly" onclick="api('/api/zgoda-ekranu')">Otwórz ustawienia</button></div>
+<div class="alert warn" id="alWarn"><span id="alWarnTxt"></span></div>
+<div class="alert bad" id="alSiec"><span>Nie mogę połączyć się z Makiem. Czy panel GTA Lektor na Macu jest otwarty, a telefon w tym samym Wi-Fi?</span></div>
+
+<section class="card">
+  <p class="step">1 · Jak słuchasz?</p>
+  <div class="profiles" id="profiles">
+    <button class="prof" data-p="tv_mac"><img src="/grafiki/profil_tv_mac.jpg" alt=""><b>TV + Mac</b><span>Gra z telewizora, lektor z głośników Maca</span></button>
+    <button class="prof" data-p="tv_glosnik"><img src="/grafiki/profil_tv_glosnik.jpg" alt=""><b>TV + głośnik</b><span>Gra z telewizora, lektor z głośnika Bluetooth</span></button>
+    <button class="prof" data-p="sluchawki"><img src="/grafiki/profil_sluchawki.jpg" alt=""><b>Słuchawki</b><span>Gra i lektor w słuchawkach Bluetooth</span></button>
+    <button class="prof" data-p="iphone"><img src="/grafiki/profil_iphone.jpg" alt=""><b>iPhone</b><span>Lektor z iPhone'a (głośnik albo jego słuchawki)</span></button>
+  </div>
+  <div class="hint" id="hint"></div>
+</section>
+
+<section class="card telOnly" id="telAudio">
+  <p class="step">Dźwięk w tym iPhonie</p>
+  <button class="telbtn" id="telBtn">🔊 Włącz dźwięk w tym iPhonie</button>
+  <p class="teldiag" id="telDiag">Stuknij raz — iPhone pozwala grać dźwięk dopiero po stuknięciu.</p>
+</section>
+
+<section class="card">
+  <p class="step">2 · Lektor</p>
+  <div class="row" id="devRow"><label for="dev">Gra na</label><select id="dev"></select><button class="btn small" onclick="devices(true)" title="Szukaj nowo podłączonych głośników i słuchawek">Odśwież</button></div>
+  <div class="volBox">
+    <div class="volHead"><label for="vol" id="volLabel">Głośność lektora</label><button class="btn small" id="volReset" title="Wróć do 100 %">↺ 100 %</button></div>
+    <div class="volCtl"><button class="btn krok" id="volMinus" aria-label="Ciszej">−</button><input type="range" id="vol" min="0" max="200" step="5" value="100"><button class="btn krok" id="volPlus" aria-label="Głośniej">+</button><span class="vol" id="volTxt">100%</span></div>
+  </div>
+  <p class="small" id="volHint"></p>
+</section>
+
+<div class="actions">
+  <button class="play" id="play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 4v16l13-8z"/></svg><span id="playTxt">Graj — otwórz Xbox i włącz lektora</span></button>
+  <button class="btn" id="demo">Demo<span class="macOnly"> (posłuchaj)</span></button>
+</div>
+
+<section class="card" style="margin-top:14px">
+  <p class="step">Ostatnie kwestie</p>
+  <ul class="lines" id="lines"></ul>
+  <p class="empty" id="linesEmpty">Tu pojawią się zdania, które czyta lektor.</p>
+</section>
+
+<section class="card macOnly" id="pilot">
+  <p class="step">📱 Pilot w iPhonie</p>
+  <div class="pilot">
+    <div class="qr"><img id="qr" alt="kod QR pilota"></div>
+    <div>
+      <ol>
+        <li>iPhone w tym samym Wi-Fi co Mac.</li>
+        <li>Otwórz Aparat, wskaż kod i stuknij żółty link.</li>
+        <li>W Safari: przycisk Udostępnij → „Do ekranu początkowego”. Od teraz pilot ma własną ikonkę.</li>
+      </ol>
+      <p class="small" id="pilotTel">Żaden telefon jeszcze się nie połączył.</p>
+      <p class="small" id="pilotAdres"></p>
+      <button class="btn small" id="qrZmien">Nie otwiera się? Kod z adresem IP</button>
+      <button class="btn small" id="nowyKlucz" title="Stare ikonki na telefonach przestaną działać">Nowy kod</button>
+    </div>
+  </div>
+</section>
+
+<section class="card macOnly">
+  <details>
+    <summary>Więcej opcji</summary>
+    <div style="margin-top:12px">
+      <div class="row"><label>Skąd obraz gry</label>
+        <div class="radios">
+          <label><input type="radio" name="src" value="ekran">Gra zdalna w Chrome</label>
+          <label><input type="radio" name="src" value="kamera">Karta przechwytująca</label>
+        </div>
+      </div>
+      <div class="row" id="camRow"><label for="cam">Numer karty</label><select id="cam"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+      <div class="row"><label></label><button class="btn small" onclick="api('/api/xbox')">Otwórz Xbox ponownie</button><button class="btn small" onclick="api('/api/zgoda-ekranu')">Zgoda na nagrywanie ekranu</button></div>
+      <div class="log" id="log"></div>
+    </div>
+  </details>
+</section>
+</div>
+
+<script>
+// Phone mode = opened from the network (the iPhone remote); on the Mac the panel lives on 127.0.0.1.
+const TEL=!["127.0.0.1","localhost","[::1]"].includes(location.hostname);
+const Q=new URLSearchParams(location.search), K=Q.get("k")||"", CID=Math.random().toString(36).slice(2,12);
+if(TEL) document.body.classList.add("tel");
+const HINT={
+ tv_mac:"W Chrome wycisz kartę Xbox: prawy klik na karcie → „Wycisz witrynę”. Grę słyszysz z telewizora, lektora z Maca.",
+ tv_glosnik:"Połącz głośnik Bluetooth z Makiem i wybierz go niżej. W Chrome wycisz kartę Xbox (prawy klik na karcie → „Wycisz witrynę”).",
+ sluchawki:"Połącz słuchawki z Makiem. W Chrome włącz dźwięk karty Xbox (prawy klik → „Wyłącz wyciszenie witryny”) i wycisz telewizor. Dźwięk gry ze strumienia może być lekko spóźniony względem obrazu na TV.",
+ iphone: TEL ? "Stuknij „Włącz dźwięk” niżej. Lektor gra też przy zablokowanym ekranie — tylko nie zamykaj pilota (nie przesuwaj go w górę w przełączniku aplikacji)."
+             : "Lektor zagra z iPhone'a: otwórz pilota w telefonie (kod QR na dole) i stuknij „Włącz dźwięk w tym iPhonie”. W Chrome wycisz kartę Xbox."};
+const DEV_RE={tv_mac:/macbook|głośniki|built-in|wbudowan/i, sluchawki:/airpods|słuchawk|headphone|buds|beats|wh-|bose/i,
+ wirtualne:/teams|zoom|blackhole|loopback|soundflower|aggregate|multi-output|wielowyjściow|agregat|virtual|wirtualn/i};
+let st=null, devs=[], profil="tv_mac", zrodlo="ekran", devTouched=false, volTimer=null, volDrag=0, profTouched=0, qrCo="local";
+const $=id=>document.getElementById(id);
+const H=()=>TEL?{"X-Lektor-Klucz":K}:{};
+const z=url=>url+(url.includes("?")?"&":"?")+"c="+CID;
+
+async function api(url,body){
+  const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-Lektor":"1",...H()},body:JSON.stringify(body||{})});
+  return r.json();
+}
+const get=url=>fetch(url,{headers:H()});
+function pickDevice(){
+  if(devTouched||!devs.length||profil==="iphone") return;
+  const sel=$("dev"); let best=null;
+  if(profil==="tv_glosnik") best=devs.find(d=>!DEV_RE.tv_mac.test(d.nazwa)&&!DEV_RE.sluchawki.test(d.nazwa)&&!DEV_RE.wirtualne.test(d.nazwa));
+  else if(DEV_RE[profil]) best=devs.find(d=>DEV_RE[profil].test(d.nazwa));
+  if(best) sel.value=best.nazwa;
+  else { const mac=devs.find(d=>DEV_RE.tv_mac.test(d.nazwa)); if(mac) sel.value=mac.nazwa; }
+  if(!best&&profil!=="tv_mac") $("hint").innerHTML+="<br><b>Nie widzę "+(profil==="sluchawki"?"słuchawek":"głośnika Bluetooth")+"</b> — połącz z Makiem i "+(TEL?"odśwież listę.":"kliknij „Odśwież”.");
+}
+async function devices(refresh){
+  const r=await (await get("/api/urzadzenia"+(refresh?"?odswiez=1":""))).json();
+  devs=r.urzadzenia||[]; const sel=$("dev"), was=sel.value;
+  sel.innerHTML=devs.map(d=>`<option value="${d.nazwa.replace(/"/g,"&quot;")}">${d.nazwa.replace(/</g,"&lt;")}${d.domyslne?" (domyślne)":""}</option>`).join("");
+  const saved=st&&st.ustawienia.urzadzenie;
+  if(was&&devs.some(d=>d.nazwa===was)) sel.value=was; else if(saved&&devs.some(d=>d.nazwa===saved)){sel.value=saved;devTouched=true;}
+  setHint(); pickDevice();
+}
+const VOL_HINT={iphone:"Głośność ustawiasz przyciskami z boku iPhone'a. Suwak to zapas: zostaw 100 %, podkręć wyżej tylko wtedy, gdy na maksimum dalej jest za cicho.",
+ mac_tel:"Suwak zmienia głośność lektora na Macu. Przyciski z boku iPhone'a tu nie działają — sterują tylko dźwiękiem telefonu."};
+const volKey=()=>profil==="iphone"?"glosnosc_iphone":"glosnosc";
+function setVol(){  // the slider shows the volume of the profile on screen (phone boost and Mac volume are kept apart)
+  $("volLabel").textContent=profil==="iphone"?"Wzmocnienie lektora":"Głośność lektora";
+  $("volHint").textContent=profil==="iphone"?VOL_HINT.iphone:(TEL?VOL_HINT.mac_tel:"");
+  if(st&&!volDrag){ const v=Math.round((st.ustawienia[volKey()]??1)*100); $("vol").value=v; $("volTxt").textContent=v+"%"; }
+}
+function setHint(){ $("hint").innerHTML='<span>💡</span><span>'+HINT[profil]+'</span>'; }
+function restartJesliCzyta(){  // the voice moves to the new device/profile right away (quick restart, no new Xbox tab)
+  if(st&&st.dziala&&st.zrodlo!=="demo")
+    return api("/api/start",{zrodlo:st.zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value, otworz_xbox:false}).then(tick);
+}
+async function setProfil(p,save){
+  const bylo=profil; profil=p; document.querySelectorAll(".prof").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
+  $("devRow").style.display=p==="iphone"?"none":"flex"; $("telAudio").style.display=p==="iphone"?"":"none";
+  devTouched=false; setHint(); setVol(); pickDevice();
+  if(save){ profTouched=Date.now(); await api("/api/ustawienia",{profil:p,urzadzenie:$("dev").value}); if(bylo!==p) restartJesliCzyta(); }
+}
+function setZrodlo(z){ zrodlo=z; document.querySelectorAll('input[name=src]').forEach(r=>r.checked=r.value===z); $("camRow").style.display=z==="kamera"?"flex":"none";
+  $("playTxt").textContent= TEL?"Graj":(z==="kamera"?"Graj — włącz lektora (karta)":"Graj — otwórz Xbox i włącz lektora"); }
+function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
+function render(){
+  if(!st) return; const pill=$("pill");
+  if(st.paczka_blad&&!st.gotowy){ pill.className="pill "+(st.paczka_blad.startsWith("wczytuję")?"":"bad"); pill.textContent=st.paczka_blad.startsWith("wczytuję")?"Wczytuję paczkę…":"Brak paczki"; }
+  else if(st.dziala){ pill.className="pill run"; pill.textContent=(st.zrodlo==="demo"?"Demo · ":TEL?"Czyta · ":"Lektor czyta · ")+fmt(st.od); }
+  else { pill.className="pill ok"; pill.textContent="Gotowy"; }
+  $("alSiec").classList.remove("show");
+  $("alPaczka").classList.toggle("show",!!st.paczka_blad&&!st.paczka_blad.startsWith("wczytuję"));
+  $("alPaczkaTxt").textContent=st.paczka_blad||"";
+  $("alZgoda").classList.toggle("show",!st.zgoda_ekranu&&zrodlo==="ekran");
+  $("alWarn").classList.toggle("show",!!st.ostrzezenie); $("alWarnTxt").textContent=(st.ostrzezenie||"").replace(/^!\s*/,"");
+  const play=$("play"); play.classList.toggle("stop",st.dziala);
+  play.querySelector("svg").innerHTML=st.dziala?'<rect x="6" y="6" width="12" height="12" rx="2"/>':'<path d="M7 4v16l13-8z"/>';
+  if(st.dziala) $("playTxt").textContent=TEL?"Zatrzymaj":"Zatrzymaj lektora"; else setZrodlo(zrodlo);
+  $("demo").style.display=st.dziala||!st.demo?"none":"";
+  // the Mac panel and the phone follow each other's volume and profile (not while this screen is being changed)
+  if(!volDrag){ const v=Math.round((st.ustawienia[volKey()]??1)*100); if(+$("vol").value!==v){ $("vol").value=v; $("volTxt").textContent=v+"%"; } }
+  if(st.ustawienia.profil!==profil&&Date.now()-profTouched>3000) setProfil(st.ustawienia.profil,false);
+  const L=st.kwestie||[]; $("linesEmpty").style.display=L.length?"none":"";
+  $("lines").innerHTML=L.map(k=>`<li><time>${k.czas}</time><span>${k.tekst.replace(/</g,"&lt;")}</span></li>`).join("");
+  $("log").textContent=(st.komunikaty||[]).join("\n");
+  if(st.pilot) renderPilot(st.pilot);
+  if(TEL) renderTel();
+}
+function renderPilot(p){
+  const adr=p[qrCo]||p.ip||p.local; if(!adr) { $("pilotAdres").textContent="Mac nie jest w żadnej sieci Wi-Fi."; return; }
+  const co=p[qrCo]?qrCo:(p.ip?"ip":"local"), src="/api/qr.png?co="+co+"&a="+encodeURIComponent(adr);
+  if($("qr").dataset.src!==src){ $("qr").src=src; $("qr").dataset.src=src; }
+  $("pilotAdres").textContent=adr.replace(/\?k=.*/,"")+(co==="local"?" (nazwa Maca — działa też po zmianie adresu)":" (adres IP)");
+  $("qrZmien").textContent=co==="local"?"Nie otwiera się? Kod z adresem IP":"Wróć do kodu z nazwą Maca";
+  const T={}; (p.telefony||[]).forEach(t=>{ if(!(t.ip in T)||t.temu<T[t.ip]) T[t.ip]=t.temu; });  // one entry per phone, not per page load
+  const ile=s=>s<3?"teraz":s<120?s+" s temu":Math.round(s/60)+" min temu";
+  $("pilotTel").innerHTML=Object.keys(T).length?'<span class="ok">● Pilot połączony</span> — '+Object.entries(T).map(([ip,s])=>ip+" ("+ile(s)+")").join(", "):"Żaden telefon jeszcze się nie połączył.";
+}
+async function tick(){
+  try{ st=await (await get(z("/api/stan"))).json(); render(); }
+  catch(e){ $("pill").className="pill bad"; $("pill").textContent=TEL?"Brak Maca":"Panel nie odpowiada"; if(TEL) $("alSiec").classList.add("show"); }
+}
+
+document.querySelectorAll(".prof").forEach(b=>b.onclick=()=>setProfil(b.dataset.p,true));
+document.querySelectorAll('input[name=src]').forEach(r=>r.onchange=()=>{setZrodlo(r.value);api("/api/ustawienia",{zrodlo:r.value});});
+$("dev").onchange=async()=>{ devTouched=true; await api("/api/ustawienia",{urzadzenie:$("dev").value}); restartJesliCzyta(); };
+function zmienVol(v){  // slider, + / − (10 % a tap) and reset all go through here: heard at once, saved shortly after
+  v=Math.max(0,Math.min(200,Math.round(v))); volDrag=Date.now(); $("vol").value=v; $("volTxt").textContent=v+"%";
+  if(profil==="iphone") A.ustawGlosnosc(v/100);
+  clearTimeout(volTimer); volTimer=setTimeout(()=>api("/api/glosnosc",{v:v/100,iphone:profil==="iphone"}).finally(()=>setTimeout(()=>volDrag=0,1200)),150);
+}
+$("vol").oninput=()=>zmienVol(+$("vol").value);
+$("volMinus").onclick=()=>zmienVol(+$("vol").value-10);
+$("volPlus").onclick=()=>zmienVol(+$("vol").value+10);
+$("volReset").onclick=()=>zmienVol(100);
+$("cam").onchange=()=>api("/api/ustawienia",{kamera:+$("cam").value});
+let busy=false;
+$("play").onclick=async()=>{
+  if(busy) return; busy=true; $("play").style.opacity=.6;
+  if(TEL&&profil==="iphone") A.wlacz();  // this tap is also the one iOS needs to allow sound
+  try{
+    if(st&&st.dziala){ await api("/api/stop"); }
+    else{
+      const r=await api("/api/start",{zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value});
+      if(!r.ok){ if(r.zgoda) $("alZgoda").classList.add("show"); else alert(r.blad||"Nie udało się uruchomić lektora."); }
+    }
+  } finally { busy=false; $("play").style.opacity=1; tick(); }
+};
+$("demo").onclick=async()=>{ if(TEL&&profil==="iphone") A.wlacz();
+  const r=await api("/api/start",{zrodlo:"demo", profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100}); if(!r.ok) alert(r.blad); tick(); };
+$("qrZmien").onclick=()=>{ qrCo=qrCo==="local"?"ip":"local"; if(st&&st.pilot) renderPilot(st.pilot); };
+$("nowyKlucz").onclick=async()=>{ if(!confirm("Zrobić nowy kod? Pilot dodany do ekranu iPhone'a przestanie działać — trzeba będzie zeskanować nowy kod.")) return; await api("/api/nowy-klucz"); tick(); };
+$("telBtn").onclick=()=>A.wlacz();
+if(!TEL) addEventListener("pagehide",()=>{ navigator.sendBeacon("/api/koniec?c="+CID); });
+
+// ------------------------------------------------------------------ iPhone as the speaker (profile "iphone")
+// One AudioContext kept running (a silent loop, like the Mac's single stream); lines arrive by long-poll,
+// are fetched as Opus (or WAV when this phone cannot decode Opus) and played in order, stale ones skipped.
+const A={ctx:null,gain:null,fmt:Q.get("kodek"),od:-1,kolejka:[],gra:null,slucha:false,diag:null,wl:null,wideo:null,zdarzenia:[],
+ STARY_MS:5000,
+ ustawGlosnosc(v){ if(this.gain) this.gain.gain.value=v; },
+ wlacz(){  // must run synchronously inside the tap
+  if(!this.ctx){
+    try{ if(navigator.audioSession) navigator.audioSession.type="playback"; }catch(e){}  // play even with the silent switch on
+    const C=window.AudioContext||window.webkitAudioContext; this.ctx=new C();
+    this.gain=this.ctx.createGain(); this.gain.gain.value=st&&st.ustawienia.glosnosc_iphone!=null?st.ustawienia.glosnosc_iphone:1; this.gain.connect(this.ctx.destination);
+    const s=this.ctx.createBufferSource(); s.buffer=this.ctx.createBuffer(1,this.ctx.sampleRate,this.ctx.sampleRate); s.loop=true; s.connect(this.ctx.destination); s.start();
+    this.ctx.onstatechange=()=>{ this.zdarz("dzwiek:"+this.ctx.state); renderTel(); };
+  }
+  this.ctx.resume().then(()=>renderTel());
+  this.czuwaj();
+  if(!this.diag) this.test(); else if(!this.slucha) this.sluchaj();
+  renderTel();
+ },
+ zdarz(typ){ this.zdarzenia.push({t:new Date().toTimeString().slice(0,8),typ,widoczny:document.visibilityState}); },
+ dekoduj(b){ return new Promise((ok,zle)=>{ const p=this.ctx.decodeAudioData(b,ok,zle); if(p&&p.then) p.then(ok,zle); }); },
+ async test(){  // measured on THIS phone, reported to the Mac log
+  this.diag={typ:"test",bezpieczny:window.isSecureContext,wakeLock:"wakeLock" in navigator,audioSession:"audioSession" in navigator,
+   ikonka:navigator.standalone===true||matchMedia("(display-mode: standalone)").matches,
+   canPlayOpus:document.createElement("audio").canPlayType('audio/ogg; codecs="opus"')||"nie",czestotliwosc:this.ctx.sampleRate,ua:navigator.userAgent.slice(0,160)};
+  try{
+    const pr=await (await get("/api/telefon/probka")).json();
+    for(const f of ["opus","wav"]){ const t=performance.now();
+      try{ const b=await (await get(`/api/telefon/dzwiek/${pr.idx}?f=${f}`)).arrayBuffer(); const ab=await this.dekoduj(b);
+        this.diag[f]={ok:true,ms:Math.round(performance.now()-t),s:+ab.duration.toFixed(2)}; }
+      catch(e){ this.diag[f]={ok:false,blad:String(e&&e.message||e).slice(0,120)}; } }
+  }catch(e){ this.diag.blad=String(e).slice(0,120); }
+  this.fmt=this.fmt||(this.diag.opus&&this.diag.opus.ok?"opus":"wav"); this.diag.wybrany=this.fmt;
+  api("/api/telefon/diag",this.diag); renderTel();
+  if(!this.slucha) this.sluchaj();
+ },
+ async sluchaj(){
+  this.slucha=true;
+  while(this.slucha){
+    try{
+      const r=await (await get(z("/api/telefon/kwestie?od="+this.od+"&f="+this.fmt))).json(), odebrano=performance.now();
+      if(!volDrag) this.ustawGlosnosc(r.glosnosc);
+      const pierwszy=this.od<0; this.od=r.nr; if(pierwszy) continue;
+      for(const e of r.zdarzenia){ if(e.typ==="stop") this.cisza(); else if(e.typ==="kwestia") this.pobierz(e,odebrano); }
+    }catch(e){ await new Promise(ok=>setTimeout(ok,1500)); }
+  }
+ },
+ pobierz(e,odebrano){
+  const t0=performance.now();
+  const job={e,odebrano,p:(async()=>{  // Opus arrives inside the long-poll answer; otherwise fetch the clip
+    const b=e.audio?Uint8Array.from(atob(e.audio),c=>c.charCodeAt(0)).buffer:await (await get(`/api/telefon/dzwiek/${e.idx}?f=${this.fmt}`)).arrayBuffer();
+    const t1=performance.now(); const ab=await this.dekoduj(b); return {ab,pobranie:t1-t0,dekod:performance.now()-t1}; })()};
+  job.p.catch(()=>{});
+  this.kolejka.push(job);
+  if(this.kolejka.length>2) this.raport(this.kolejka.shift(),"zaległa");  // the voice cannot keep up: drop the oldest, like on the Mac
+  this.graj();
+ },
+ wiek(job){ return job.e.wiek_ms+(performance.now()-job.odebrano); },
+ async graj(){
+  if(this.gra||!this.kolejka.length) return;
+  const job=this.kolejka[0]; this.gra=job; let r;
+  try{ r=await job.p; }catch(err){ this.zdarz("blad:"+String(err).slice(0,80)); if(this.kolejka[0]===job) this.kolejka.shift(); this.gra=null; return this.graj(); }
+  if(this.kolejka[0]!==job||this.gra!==job){ if(this.gra===job) this.gra=null; return this.graj(); }  // skipped or stopped meanwhile
+  this.kolejka.shift();
+  if(this.wiek(job)>this.STARY_MS||this.ctx.state!=="running"){ this.raport(job,this.ctx.state!=="running"?"uśpiony":"za_późno"); this.gra=null; return this.graj(); }
+  const src=this.ctx.createBufferSource(); src.buffer=r.ab; src.connect(this.gain); job.src=src;
+  src.onended=()=>{ if(this.gra===job){ this.gra=null; this.graj(); } };
+  src.start();
+  this.raport(job,"gra",r);
+ },
+ cisza(){ this.kolejka=[]; if(this.gra&&this.gra.src) try{ this.gra.src.stop(); }catch(e){} this.gra=null; },
+ raport(job,typ,r){
+  const d={n:job.e.n,typ,format:this.fmt,wiek_ms:Math.round(this.wiek(job)),w_odpowiedzi:!!job.e.audio};
+  if(r){ d.pobranie_ms=Math.round(r.pobranie); d.dekodowanie_ms=Math.round(r.dekod); d.dlugosc_ms=Math.round(r.ab.duration*1000);
+    d.czekanie_ms=Math.max(0,Math.round(performance.now()-job.odebrano-r.pobranie-r.dekod)); }
+  api("/api/telefon/gram",d).catch(()=>{});
+ },
+ async czuwaj(){  // keep the screen on: Wake Lock if this browser offers it here, else a muted looping video
+  if("wakeLock" in navigator){ try{ this.wl=await navigator.wakeLock.request("screen"); this.zdarz("wakelock:ok"); renderTel(); return; }catch(e){ this.zdarz("wakelock:"+e.name); } }
+  if(!this.wideo){ const v=document.createElement("video"); v.src="/czuwanie.mp4"; v.muted=true; v.loop=true; v.playsInline=true;
+    v.setAttribute("playsinline",""); v.setAttribute("muted",""); v.style.cssText="position:fixed;left:0;bottom:0;width:2px;height:2px;opacity:.01;pointer-events:none";
+    document.body.appendChild(v); this.wideo=v; }
+  this.wideo.play().then(()=>this.zdarz("wideo:gra"),e=>this.zdarz("wideo:"+e.name));
+ }
+};
+function renderTel(){
+  const b=$("telBtn"), d=$("telDiag"), gra=A.ctx&&A.ctx.state==="running";
+  b.classList.toggle("on",!!gra); b.textContent=gra?"✓ Dźwięk w iPhonie włączony":(A.ctx?"🔊 Stuknij, żeby wznowić dźwięk":"🔊 Włącz dźwięk w tym iPhonie");
+  if(!A.diag){ d.textContent=A.ctx?"Sprawdzam, jakie nagrania czyta ten iPhone…":"Stuknij raz — iPhone pozwala grać dźwięk dopiero po stuknięciu."; return; }
+  const t=st&&st.telefon||{}, nagr=A.fmt==="opus"?"prosto z paczki (Opus)":(A.diag.opus&&A.diag.opus.ok?"WAV (wymuszone)":"WAV (ten iPhone nie czyta Opus — Mac przerabia)");
+  const ekran=A.wl?"Ekran nie zgaśnie sam.":"Ekran może zgasnąć albo możesz go zablokować — lektor gra dalej.";
+  d.innerHTML="Nagrania: "+nagr+".<br>"+(t.ostatnie_ms!=null?"Opóźnienie ostatniej kwestii: "+(t.ostatnie_ms/1000).toFixed(2).replace(".",",")+" s.<br>":"")+ekran;
+}
+document.addEventListener("visibilitychange",()=>{
+  if(!A.ctx) return;
+  A.zdarz(document.visibilityState==="hidden"?"ukryty"+(A.gra?" (w trakcie kwestii)":""):"widoczny, dźwięk:"+A.ctx.state);
+  if(document.visibilityState==="visible"){
+    A.ctx.resume().catch(()=>{}).then(()=>renderTel()); A.czuwaj();
+    const lista=A.zdarzenia.splice(0); if(lista.length) api("/api/telefon/diag",{typ:"zdarzenia",lista}).catch(()=>{});
+  }
+});
+
+(async()=>{
+  if(TEL) api("/api/telefon/diag",{typ:"start",ikonka:navigator.standalone===true||matchMedia("(display-mode: standalone)").matches,
+    bezpieczny:window.isSecureContext,wakeLock:"wakeLock" in navigator,adres:location.hostname,ua:navigator.userAgent.slice(0,120)}).catch(()=>{});
+  await tick();
+  if(st){ const u=st.ustawienia; $("cam").value=u.kamera||0;
+    setZrodlo(u.zrodlo==="kamera"?"kamera":"ekran"); setProfil(u.profil||"tv_mac",false); }
+  await devices(false);
+  setInterval(tick,1000);
+})();
+</script>
+</body>
+</html>

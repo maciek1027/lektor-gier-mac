@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+# settings + the secret key of the iPhone remote — never commit
+ustawienia.json
+# voice packs and demo videos belong to their authors — never commit
+paczki/*
+!paczki/CZYTAJ.txt
+# screen previews (they show your desktop)
+podglad*.png
+*.log
+# a test build of the app inside the folder
+*.app/
