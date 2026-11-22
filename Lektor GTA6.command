@@ -2,11 +2,13 @@
 # Double-click launcher for the GTA VI Polish voice-over reader (opens in Terminal).
 cd "$(dirname "$0")" || exit 1
 PY="./.venv/bin/python"
-PACZKA="$(ls paczki/*.zip 2>/dev/null | head -1)"   # the GameReader 2.0 voice pack dropped into paczki/
-DEMO="$(ls paczki/*.mp4 2>/dev/null | head -1)"     # optional demo video
+# the GameReader 2.0 voice pack and the optional demo video: the reader picks them (LEKTOR_PACZKA / LEKTOR_DEMO,
+# lokalne.env, else the first .zip / .mp4 in the packs folder — LEKTOR_PACZKI or paczki/)
+PACZKA="$("$PY" -c 'import lektor as L; print(L.znajdz(".zip", "LEKTOR_PACZKA") or "")' 2>/dev/null)"
+DEMO="$("$PY" -c 'import lektor as L; print(L.znajdz(".mp4", "LEKTOR_DEMO") or "")' 2>/dev/null)"
 
 if [ ! -f "$PACZKA" ]; then
-  echo "Nie widzę paczki lektora — pobierz ją z gamereader.pl i wrzuć plik .zip do folderu paczki/."
+  echo "Nie widzę paczki lektora — pobierz ją z gamereader.pl i wrzuć plik .zip do folderu paczki/ (paczki na dysku zewnętrznym: podłącz dysk)."
   read -r -p "Enter zamyka okno."
   exit 1
 fi

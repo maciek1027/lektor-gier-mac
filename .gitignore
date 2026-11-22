@@ -4,6 +4,8 @@ __pycache__/
 .DS_Store
 # settings + the secret key of the iPhone remote — never commit
 ustawienia.json
+# per-install paths (e.g. packs on an external disk) — see lektor.wczytaj_lokalne
+lokalne.env
 # voice packs and demo videos belong to their authors — never commit
 paczki/*
 !paczki/CZYTAJ.txt

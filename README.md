@@ -51,6 +51,9 @@ cd gta-lektor-mac
 ./instaluj.sh
 ```
 Potrzebny Python 3.10+ (np. `brew install python`). Paczkę `.zip` wrzuć do folderu `paczki/`.
+Paczki na innym dysku? Utwórz w folderze programu plik `lokalne.env` (poza gitem), np.
+`LEKTOR_PACZKI=/Volumes/Dysk/paczki` (folder paczek), `LEKTOR_PACZKA=…/gra.zip` (która paczka, gdy jest ich kilka),
+`LEKTOR_DEMO=…/film.mp4`. Te same nazwy działają jako zmienne środowiska. Testy czytnika: `.venv/bin/python -m unittest discover -s testy`.
 </details>
 
 ## Pierwsze uruchomienie — zgody macOS

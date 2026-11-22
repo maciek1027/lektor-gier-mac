@@ -36,7 +36,8 @@ PORT = int(os.environ.get("LEKTOR_PORT") or 8797)
 FOLDER = os.path.dirname(os.path.abspath(__file__))
 PANEL = os.path.join(FOLDER, "panel")
 USTAWIENIA = os.environ.get("LEKTOR_USTAWIENIA") or os.path.join(FOLDER, "ustawienia.json")
-# the voice pack (.zip) and an optional demo video (.mp4) live in paczki/ (or LEKTOR_PACZKA / LEKTOR_DEMO)
+# the voice pack (.zip) and an optional demo video (.mp4): LEKTOR_PACZKA / LEKTOR_DEMO, else the first file in the
+# packs folder (LEKTOR_PACZKI or paczki/; per-install values may sit in lokalne.env — see lektor.wczytaj_lokalne)
 paczka_plik = lambda: L.znajdz(".zip", "LEKTOR_PACZKA")
 demo_plik = lambda: L.znajdz(".mp4", "LEKTOR_DEMO")
 XBOX = "https://www.xbox.com/pl-PL/play/consoles"
@@ -162,7 +163,8 @@ class Stan:
         if not plik or not os.path.exists(plik):
             with self.lock:
                 self.paczka_blad = ("Nie widzę paczki lektora. Pobierz paczkę GTA VI z gamereader.pl, wrzuć plik "
-                                    ".zip do folderu „paczki” (przycisk obok) i kliknij „Sprawdź ponownie”.")
+                                    ".zip do folderu paczek (przycisk obok) i kliknij „Sprawdź ponownie”. "
+                                    "Folder paczek na dysku zewnętrznym? Podłącz dysk.")
             return
         try:
             p = L.Paczka(plik)
@@ -454,6 +456,7 @@ class Stan:
                 "ip": f"http://{ip}:{PORT}{q}" if ip else None}
 
     def stan(self, lokalny):
+        demo = demo_plik()
         with self.lock:
             s = self.sesja
             ostrz = next((t for _, t in reversed(self.komunikaty) if t.startswith("!")), None)
@@ -470,7 +473,7 @@ class Stan:
                 "kwestie": list(self.kwestie), "ostrzezenie": ostrz if s else None,
                 "komunikaty": [f"{c} {t}" for c, t in list(self.komunikaty)[-8:]],
                 "ustawienia": self.ust, "zgoda_ekranu": bool(Quartz.CGPreflightScreenCaptureAccess()),
-                "demo": bool(demo_plik()),
+                "demo": bool(demo and os.path.exists(demo)),  # a path set for a disk that is not plugged in = no demo
                 "telefon": {"slucha": slucha, "ostatnie_ms": op[-1] if op else None,
                             "mediana_ms": int(statistics.median(op)) if op else None},
             }

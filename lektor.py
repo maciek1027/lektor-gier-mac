@@ -33,11 +33,39 @@ from rapidfuzz import fuzz, process
 
 FOLDER = os.path.dirname(os.path.abspath(__file__))
 PODGLAD = os.path.join(FOLDER, "podglad.png")
-PACZKI = os.path.join(FOLDER, "paczki")  # put the GameReader 2.0 voice pack (.zip) and an optional demo video (.mp4) here
+LOKALNE = os.path.join(FOLDER, "lokalne.env")  # per-install paths, outside git (see .gitignore)
+ZMIENNE_LOKALNE = ("LEKTOR_PACZKI", "LEKTOR_PACZKA", "LEKTOR_DEMO")
+
+
+def wczytaj_lokalne(path=LOKALNE):
+    """Optional KEY=VALUE file next to the program (e.g. packs on an external disk). Only the path variables
+    above are taken; a variable already set in the environment wins. Values may be quoted ("…" or '…');
+    an unquoted value ends at " #" (comment). BOM and CRLF are tolerated."""
+    try:
+        with open(path, encoding="utf-8-sig") as f:
+            for line in f:
+                k, sep, v = line.strip().partition("=")
+                k, v = k.strip(), v.strip()
+                if not sep or k not in ZMIENNE_LOKALNE:
+                    continue
+                if v[:1] in ("'", '"') and v.find(v[0], 1) > 0:
+                    v = v[1:v.find(v[0], 1)]
+                else:
+                    v = re.split(r"\s#", v, maxsplit=1)[0].strip()
+                if v:
+                    os.environ.setdefault(k, v)
+    except FileNotFoundError:
+        pass
+
+
+wczytaj_lokalne()
+# the GameReader 2.0 voice packs (.zip) and an optional demo video (.mp4): paczki/ or the LEKTOR_PACZKI folder
+PACZKI = os.environ.get("LEKTOR_PACZKI") or os.path.join(FOLDER, "paczki")
 
 
 def znajdz(rozszerzenie, zmienna):
-    """Pack / demo path: the environment variable first, else the first matching file in paczki/ (None if none)."""
+    """Pack / demo path: the environment variable first, else the first matching file in the packs folder
+    (None if none)."""
     if os.environ.get(zmienna):
         return os.environ[zmienna]
     try:
@@ -62,7 +90,8 @@ def log(msg):
 class Paczka:
     def __init__(self, path):
         if not os.path.exists(path):
-            sys.exit(f"Nie ma paczki: {path} — wrzuć plik .zip paczki GameReadera do folderu paczki/")
+            sys.exit(f"Nie ma paczki: {path} — sprawdź ścieżkę (paczka na dysku zewnętrznym: czy dysk jest "
+                     f"podłączony?); paczki GameReadera wrzucaj do folderu {PACZKI}")
         self.zip = zipfile.ZipFile(path)
         self.lock = threading.Lock()
         self.manifest = self._json("manifest.json", {})
@@ -78,6 +107,21 @@ class Paczka:
         self.norm = [norm(t) for t in self.texts]
         self.raw = [t.lower() for t in self.texts]
         self.audio = [audio.get(i) for i in self.ids]
+        # What the matcher searches. Bilingual packs (GTA V: `text_pl` + `text_en`, while `text` mixes both
+        # languages) get every language variant of a line, so it is found under Polish AND English subtitles;
+        # `szukaj_idx[j]` = line index of variant j. Packs with only `text` search `norm` itself (map None).
+        self.szukaj, self.szukaj_raw, self.szukaj_idx = self.norm, self.raw, None
+        if any("text_pl" in e or "text_en" in e for e in entries):
+            self.szukaj, self.szukaj_raw, self.szukaj_idx = [], [], []
+            for i, e in enumerate(entries):
+                widziane = set()
+                for t in (e.get("text"), e.get("text_pl"), e.get("text_en")):
+                    n = norm(t) if t else ""
+                    if n and n not in widziane:
+                        widziane.add(n)
+                        self.szukaj.append(n)
+                        self.szukaj_raw.append(t.lower())
+                        self.szukaj_idx.append(i)
 
     def _json(self, name, default=None):
         try:
@@ -94,6 +138,47 @@ class Paczka:
         bands = [b for b in (rois[0].get("center_line_filter") or {}).get("bands", []) if b.get("enabled")]
         forget = ((rois[0].get("multi_line") or {}).get("forget_frames")) or 5
         return (r["x"], r["y"], r["width"], r["height"]), bands, forget
+
+    def nieobslugiwane(self):
+        """Pack fields (active values only) this reader does NOT apply — for marking a game in a catalogue.
+        Each item: {"pole", "opis", "czytanie"}; czytanie=False means skipping it cannot lose a line
+        (signal_detection only saves OCR work: this reader runs OCR on every tick). Empty list = all handled."""
+        out = []
+
+        def dodaj(pole, opis, czytanie=True):
+            out.append({"pole": pole, "opis": opis, "czytanie": czytanie})
+
+        for k, v in self.preset.items():
+            if k != "rois" and v:
+                dodaj(k, "pole presetu nieznane czytnikowi")
+        rois = self.preset.get("rois") or []
+        if len(rois) > 1:
+            dodaj("rois", f"{len(rois)} obszary napisów — czytany tylko pierwszy")
+        for k, v in (rois[0] if rois else {}).items():
+            if k in ("name", "rect", "center_line_filter") or not v:
+                continue
+            if k == "multi_line":
+                reszta = sorted(kk for kk, vv in v.items() if kk != "forget_frames" and vv)
+                if reszta:
+                    dodaj("multi_line", ", ".join(reszta))
+            elif k == "geometry":
+                ref = v.get("reference") or {}
+                w, h = ref.get("width"), ref.get("height")
+                if v.get("mode", "anchored") != "anchored" or (w and h and abs(w / h - 16 / 9) > 0.02):
+                    dodaj("geometry", f"tryb {v.get('mode')}, wzorzec {w}×{h} (czytnik zakłada obraz 16:9)")
+            elif k == "signal_detection":
+                dodaj(k, "pomijane — OCR w każdym odczycie", czytanie=False)
+            elif k == "preprocessing":
+                dodaj(k, ", ".join(str(x.get("kind", x)) if isinstance(x, dict) else str(x) for x in v))
+            else:
+                dodaj(k, "pole obszaru nieobsługiwane")
+        znane = {"capture_interval", "adaptive_capture", "backoff_after_quiet_ticks", "backoff_max_interval_ms"}
+        for k, v in (self.settings.get("ocr") or {}).items():
+            if k == "match_strategy" and v and v != "wholetext":
+                dodaj("ocr.match_strategy", str(v))
+            elif k not in znane and k != "match_strategy" and v:
+                dodaj(f"ocr.{k}", "ustawienie nieobsługiwane")
+        return out
 
     def dzwiek(self, idx):
         with self.lock:
@@ -115,16 +200,21 @@ class Dopasowanie:
         q = norm(text)
         if len(q) < 3:
             return None, 0
-        found = process.extract(q, self.p.norm, scorer=fuzz.ratio, score_cutoff=prog(len(q)), limit=25)
+        szukaj, mapa = self.p.szukaj, self.p.szukaj_idx
+        found = process.extract(q, szukaj, scorer=fuzz.ratio, score_cutoff=prog(len(q)), limit=25)
         if not found:
-            best = process.extractOne(q, self.p.norm, scorer=fuzz.ratio)
+            best = process.extractOne(q, szukaj, scorer=fuzz.ratio)
             return None, (best[1] if best else 0)
+        if mapa is not None:  # bilingual pack: variant -> line (raw text of the variant for the tie-break)
+            found = [(self.p.szukaj_raw[j], s, mapa[j]) for _, s, j in found]
+        else:
+            found = [(self.p.raw[i], s, i) for _, s, i in found]
         top = found[0][1]
         pool = [f for f in found if f[1] >= top - 2]
 
         def waga(f):
-            _, score, i = f
-            bonus = 0.1 * fuzz.ratio(text.lower(), self.p.raw[i])  # punctuation / diacritics as tie-break
+            raw, score, i = f
+            bonus = 0.1 * fuzz.ratio(text.lower(), raw)  # punctuation / diacritics as tie-break
             if self.ostatni is not None:
                 d = abs(i - self.ostatni)
                 bonus += 3 if d <= 30 else 1.5 if d <= 300 else 0
@@ -475,7 +565,8 @@ def lista_kamer():
 
 def main():
     ap = argparse.ArgumentParser(description="Polski lektor z paczek GameReader 2.0 na macOS")
-    ap.add_argument("--paczka", default=znajdz(".zip", "LEKTOR_PACZKA"), help="domyślnie pierwszy .zip w paczki/")
+    ap.add_argument("--paczka", default=znajdz(".zip", "LEKTOR_PACZKA"),
+                    help="domyślnie LEKTOR_PACZKA, inaczej pierwszy .zip w folderze paczek (LEKTOR_PACZKI albo paczki/)")
     zr = ap.add_mutually_exclusive_group()
     zr.add_argument("--ekran", action="store_true", help="obraz gry na głównym ekranie (np. gra zdalna)")
     zr.add_argument("--kamera", type=int, help="numer karty przechwytującej (zob. --lista-kamer)")
@@ -497,7 +588,8 @@ def main():
         ap.error("wybierz źródło: --ekran, --kamera N albo --wideo PLIK")
 
     if not a.paczka:
-        sys.exit("Nie ma paczki lektora: pobierz paczkę z gamereader.pl i wrzuć plik .zip do folderu paczki/")
+        sys.exit(f"Nie ma paczki lektora: pobierz paczkę z gamereader.pl i wrzuć plik .zip do folderu {PACZKI} "
+                 "(folder na dysku zewnętrznym: czy dysk jest podłączony?)")
     t = time.time()
     p = Paczka(a.paczka)
     frac = p.roi()[0]
@@ -505,6 +597,8 @@ def main():
         f"wczytana w {time.time() - t:.1f} s")
     for req in p.manifest.get("requirements", []):
         log(f"Wymóg paczki: {req.get('description', '').strip()}")
+    for n in p.nieobslugiwane():
+        log(f"Pole paczki, którego czytnik nie stosuje: {n['pole']} ({n['opis']})")
 
     if a.ekran:
         obszar = tuple(float(v) for v in a.obszar.split(",")) if a.obszar else None
