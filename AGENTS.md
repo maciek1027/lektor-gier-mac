@@ -60,7 +60,9 @@ widać w panelu jako żółty pasek z przyciskiem „Otwórz ustawienia”. Nie 
 
 ## Ustawienia w grze i na Xboxie (powiedz użytkownikowi)
 
-- GTA VI: napisy **włączone**, tło napisów **100 %**, rozmiar napisów **mały** (wymóg paczki).
+- GTA VI: napisy **włączone**, rozmiar **mały** (obszar napisów w paczce jest dobrany pod mały rozmiar). Autorzy paczki
+  zalecają też tło napisów na 100 % (ciemny pasek pod tekstem). U autora programu OCR działał także bez tła — gdy
+  lektor gubi kwestie na jasnych scenach, każ włączyć tło.
 - Gra zdalna: Chrome → https://www.xbox.com/pl-PL/play/consoles, okno gry na **pełnym ekranie** Maca (czytnik
   zakłada obraz 16:9 na całym ekranie).
 - Dźwięk gry na telewizorze przy grze zdalnej: Xbox przerzuca wtedy dźwięk na Maca. Pomaga: Xbox → Ustawienia →

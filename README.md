@@ -66,7 +66,9 @@ zminimalizować) i panel w oknie Chrome. macOS zapyta o kilka rzeczy — na wszy
 
 ## Ustawienia w grze
 
-- GTA VI: napisy **włączone**, tło napisów **100 %**, rozmiar napisów **mały**.
+- GTA VI: napisy **włączone**, rozmiar napisów **mały**. Jeśli lektor gubi kwestie (napis na jasnym tle, np. niebo,
+  woda, neony), włącz też **tło napisów na 100 %** — ciemny pasek pod tekstem; tak zalecają autorzy paczki. U autora
+  tego programu działało też bez tła.
 - Gra zdalna w Chrome (`xbox.com/play`) na **pełnym ekranie** Maca.
 - **Dźwięk gry na telewizorze:** gdy włączasz grę zdalną, Xbox przerzuca dźwięk na Maca. Na Xboxie wejdź w
   Ustawienia → Ogólne → Głośność i wyjście audio → Dodatkowe opcje i **odznacz** „Wycisz dźwięk głośnika, gdy
@@ -91,7 +93,7 @@ dodatkowego wzmocnienia lektora. W pozostałych profilach suwak zmienia głośno
 
 Najprościej: otwórz Claude Code albo Codex w folderze programu i napisz, co się dzieje — AI ma instrukcję
 (`AGENTS.md`) i sprawdzi dziennik `~/Library/Logs/gta-lektor.log`. Najczęstsze przyczyny: brak zgody na nagrywanie
-ekranu, gra nie na pełnym ekranie, napisy w grze wyłączone albo brak paczki w folderze `paczki`.
+ekranu, gra nie na pełnym ekranie, napisy w grze wyłączone (albo bez tła na jasnej scenie), brak paczki w folderze `paczki`.
 
 ## Ważne
 
