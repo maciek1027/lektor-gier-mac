@@ -228,6 +228,40 @@ class Dopasowanie:
 
 
 # ---------------------------------------------------------------- OCR (macOS Vision)
+class StanOCR:
+    """Health of macOS text recognition. The Accurate level can fail system-wide for minutes
+    (TextRecognition.CRImageReaderError 1 — seen 2026-11-22 while another app also ran OCR); it used to be
+    swallowed, so the reader went silent. Now: read with the Fast level and retry Accurate after PRZERWA s."""
+    PRZERWA = 30.0
+
+    def __init__(self):
+        self.bledy = 0  # Accurate failures
+        self.szybkie = 0  # reads done with the Fast level
+        self.blad = None  # last Accurate error text
+        self.blad_szybki = None  # last Fast error text (both failing = nothing read)
+        self.awaria = False  # Accurate is failing right now
+        self.przerwa_do = 0.0
+
+
+OCR = StanOCR()
+
+
+def _rozpoznaj(data, dokladny):
+    """One Vision pass. Returns (observations, None) or (None, error text) when the request fails."""
+    handler = Vision.VNImageRequestHandler.alloc().initWithData_options_(data, None)
+    req = Vision.VNRecognizeTextRequest.alloc().init()
+    if dokladny:
+        req.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
+        req.setRecognitionLanguages_(["pl-PL"])
+        req.setUsesLanguageCorrection_(True)
+    else:  # Fast drops diacritics, which norm() drops anyway
+        req.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelFast)
+    ok, err = handler.performRequests_error_([req], None)
+    if not ok:
+        return None, (f"{err.domain()} {err.code()}" if err is not None else "błąd bez opisu")
+    return req.results() or [], None
+
+
 def ocr(img, bands):
     """Returns subtitle lines (top to bottom) recognised in the region image."""
     ok, buf = cv2.imencode(".png", img)
@@ -235,14 +269,21 @@ def ocr(img, bands):
         return []
     with objc.autorelease_pool():
         data = NSData.dataWithBytes_length_(buf.tobytes(), len(buf))
-        handler = Vision.VNImageRequestHandler.alloc().initWithData_options_(data, None)
-        req = Vision.VNRecognizeTextRequest.alloc().init()
-        req.setRecognitionLevel_(Vision.VNRequestTextRecognitionLevelAccurate)
-        req.setRecognitionLanguages_(["pl-PL"])
-        req.setUsesLanguageCorrection_(True)
-        handler.performRequests_error_([req], None)
+        wyniki = None
+        if time.time() >= OCR.przerwa_do:
+            wyniki, blad = _rozpoznaj(data, True)
+            if wyniki is None:
+                OCR.bledy, OCR.blad, OCR.awaria = OCR.bledy + 1, blad, True
+                OCR.przerwa_do = time.time() + OCR.PRZERWA
+            else:
+                OCR.awaria = False
+        if wyniki is None:
+            OCR.szybkie += 1
+            wyniki, blad = _rozpoznaj(data, False)
+            if wyniki is None:
+                OCR.blad_szybki, wyniki = blad, []
         lines = []
-        for obs in req.results() or []:
+        for obs in wyniki:
             cand = obs.topCandidates_(1)
             if not cand:
                 continue
@@ -489,6 +530,9 @@ def czytaj(p, m, glos, src, stop=None, szczegoly=False, na_kwestie=None, na_info
     po_ilu = ustaw.get("backoff_after_quiet_ticks", 12)
     ostatni_ocr, ostatni_tekst, cisza, krok = "", None, 0, krok_min
     nieznane, licz, bez_tekstu_od = set(), collections.Counter(), time.time()
+    # reported once per outage per reading session: a new session (panel „Graj”) shows the warning again,
+    # because the panel lists the warnings of the current session only
+    ocr_start, zgloszona_awaria = (OCR.bledy, OCR.szybkie), False
 
     def czekaj(s):
         if stop is not None:
@@ -502,6 +546,13 @@ def czytaj(p, m, glos, src, stop=None, szczegoly=False, na_kwestie=None, na_info
             img = src.obszar(krok)
             if img is not None and img.size:
                 linie = ocr(img, bands)
+                if OCR.awaria and not zgloszona_awaria:
+                    na_info(f"! Rozpoznawanie tekstu macOS (tryb dokładny) nie działa ({OCR.blad}) — czytam trybem "
+                            f"szybkim (mniej dokładnym), ponawiam co {OCR.PRZERWA:.0f} s.")
+                    zgloszona_awaria = True
+                elif zgloszona_awaria and not OCR.awaria:
+                    na_info("Rozpoznawanie tekstu macOS (tryb dokładny) znów działa.")
+                    zgloszona_awaria = False
                 tekst = " ".join(linie).strip()
                 if len(norm(tekst)) < 3:
                     cisza += 1
@@ -546,6 +597,7 @@ def czytaj(p, m, glos, src, stop=None, szczegoly=False, na_kwestie=None, na_info
                 czekaj(max(0.0, krok - (time.time() - t0)))
     except KeyboardInterrupt:
         pass
+    licz["ocr_bledy"], licz["ocr_szybkie"] = OCR.bledy - ocr_start[0], OCR.szybkie - ocr_start[1]
     return licz
 
 
@@ -631,7 +683,8 @@ def main():
     log("Lektor gotowy. Ctrl+C kończy.")
 
     licz = czytaj(p, m, glos, src, szczegoly=a.szczegoly)
-    log(f"Koniec. Przeczytane kwestie: {licz['glos']}, napisy bez dopasowania: {licz['bez']}.")
+    log(f"Koniec. Przeczytane kwestie: {licz['glos']}, napisy bez dopasowania: {licz['bez']}. "
+        f"OCR: błędy trybu dokładnego {licz['ocr_bledy']}, odczyty trybem szybkim {licz['ocr_szybkie']}.")
     if a.wideo and not a.bez_dzwieku:
         koniec = time.time() + 15
         while glos.zajety() and time.time() < koniec:  # let the last line finish

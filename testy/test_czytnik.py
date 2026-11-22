@@ -56,8 +56,13 @@ def paczka(katalog, wpisy, preset=None, settings=None):
     return L.Paczka(sciezka)
 
 
-def przeczytaj(img):
-    return " ".join(L.ocr(img, [])).strip()
+def przeczytaj(img, wymagaj_dokladnego=True):
+    """OCR of a frame. macOS Accurate recognition sometimes fails system-wide for minutes (CRImageReaderError 1):
+    then the test is SKIPPED as not measured — a Fast-level read must not pass or fail an Accurate test."""
+    tekst = " ".join(L.ocr(img, [])).strip()
+    if wymagaj_dokladnego and getattr(getattr(L, "OCR", None), "awaria", False):
+        raise unittest.SkipTest(f"NIE ZMIERZYŁEM: tryb dokładny OCR macOS nie działa ({L.OCR.blad}) — powtórz później")
+    return tekst
 
 
 # Invented dialogue (not from any voice pack). Neighbours are close in wording so a wrong field would show.
@@ -137,6 +142,66 @@ class TestPrzetwarzanieKadru(unittest.TestCase):
             with self.subTest(tlo=tlo, kolor=kolor, obrys=obrys):
                 tekst = przeczytaj(kadr(self.NAPIS, tlo=tlo, kolor=kolor, obrys=obrys))
                 self.assertGreaterEqual(fuzz.ratio(L.norm(tekst), L.norm(self.NAPIS)), 90, f"OCR: {tekst!r}")
+
+
+class _Zrodlo:
+    """Picture source for czytaj(): the given frames, then end."""
+
+    def __init__(self, klatki):
+        self.klatki, self.koniec, self.szybko = list(klatki), False, True
+
+    def obszar(self, krok):
+        if not self.klatki:
+            self.koniec = True
+            return None
+        return self.klatki.pop(0)
+
+
+class TestAwariaOCR(unittest.TestCase):
+    """macOS Accurate text recognition failing (CRImageReaderError 1, 2026-11-22) must not silence the reader:
+    the error is reported, the line is read with the Fast level, Accurate is retried after a pause."""
+
+    NAPIS = "Gdzie byłeś wczoraj w nocy, Michał?"
+
+    def setUp(self):
+        if not hasattr(L, "_rozpoznaj"):
+            self.skipTest("stary czytnik: brak _rozpoznaj (kontrola: kopia czytnika bez przejścia na tryb szybki)")
+        self.prawdziwe = L._rozpoznaj
+        self.wolania = []
+
+        def awaria_dokladnego(data, dokladny):
+            self.wolania.append(dokladny)
+            return (None, "TextRecognition.CRImageReaderError 1") if dokladny else self.prawdziwe(data, False)
+
+        L._rozpoznaj = awaria_dokladnego
+        L.OCR = L.StanOCR()
+        L.OCR.PRZERWA = 3600  # the pause never runs out on its own during the test (no wall-clock race)
+
+    def tearDown(self):
+        if hasattr(self, "prawdziwe"):
+            L._rozpoznaj = self.prawdziwe
+            L.OCR = L.StanOCR()
+
+    def test_tekst_czytany_trybem_szybkim_i_blad_zgloszony(self):
+        tekst = przeczytaj(kadr(self.NAPIS), wymagaj_dokladnego=False)
+        self.assertGreaterEqual(fuzz.ratio(L.norm(tekst), L.norm(self.NAPIS)), 90, f"OCR: {tekst!r}")
+        self.assertEqual((L.OCR.bledy, L.OCR.szybkie, L.OCR.awaria), (1, 1, True))
+        przeczytaj(kadr(self.NAPIS), False)  # within the pause: Fast only, Accurate not retried
+        self.assertEqual(self.wolania, [True, False, False])
+        L.OCR.przerwa_do = 0  # pause over: Accurate is tried again
+        przeczytaj(kadr(self.NAPIS), False)
+        self.assertEqual(self.wolania[-2:], [True, False])
+
+    def test_petla_czytania_mowi_o_awarii_i_dopasowuje(self):
+        with tempfile.TemporaryDirectory() as t:
+            p = paczka(t, DWUJEZYCZNE)
+            info, kwestie = [], []
+            glos = type("Glos", (), {"dodaj": lambda self, idx: None})()
+            licz = L.czytaj(p, L.Dopasowanie(p), glos, _Zrodlo([kadr(self.NAPIS)]), na_info=info.append,
+                            na_kwestie=lambda tekst, idx, s: kwestie.append(p.ids[idx]))
+        self.assertTrue(any(i.startswith("! Rozpoznawanie tekstu macOS") for i in info), info)
+        self.assertEqual(kwestie, ["a1"])
+        self.assertEqual((licz["ocr_bledy"], licz["ocr_szybkie"]), (1, 1))
 
 
 def roi(**pola):
