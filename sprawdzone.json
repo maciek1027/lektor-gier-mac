@@ -1,0 +1,7 @@
+{
+ "_opis": "Which voice-pack versions were tested with this reader, and how. Key = pack id from its manifest.json. rodzaj: na_zywo = live game (Xbox Remote Play) · nagranie = a recording of the game (subtitles read, voice matched). Only these records give a tile the state 'sprawdzona' / 'nagranie'; another version of the pack is untested. Our own test notes — no pack content here.",
+ "7dc77631-292f-4077-a5ee-aad5b6346ad1": {"nazwa": "Grand Theft Auto VI", "wersja": "1.0.2", "rodzaj": "na_zywo", "data": "2026-11-21", "jak": "gra zdalna z Xboxa, lektor z Maca i z iPhone'a; demo 14 z 14 kwestii"},
+ "5993bdff-fb14-4976-8f22-d4100476d43c": {"nazwa": "Tomb Raider I-III Remastered", "wersja": "1.0.0", "rodzaj": "nagranie", "data": "2026-11-22", "jak": "przejście 4K z YouTube, 23 kwestie z 23"},
+ "e36b1f99-e368-48c6-8e4a-4a0c55852d53": {"nazwa": "Resident Evil 2 Remake", "wersja": "1.0.0", "rodzaj": "nagranie", "data": "2026-11-22", "jak": "nagranie z YouTube, 38 kwestii z 38"},
+ "d18239c6-8885-487b-b5a6-722ff60c2c1f": {"nazwa": "Grand Theft Auto V", "wersja": "1.0.1", "rodzaj": "nagranie", "data": "2026-11-22", "jak": "nagranie z YouTube z polskimi napisami, 54 kwestie"}
+}

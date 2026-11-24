@@ -11,10 +11,12 @@ Examples:
   lektor.py --lista-kamer
 """
 import argparse
+import atexit
 import collections
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -63,16 +65,46 @@ wczytaj_lokalne()
 PACZKI = os.environ.get("LEKTOR_PACZKI") or os.path.join(FOLDER, "paczki")
 
 
+def pliki_w_folderze(folder, rozszerzenie):
+    """Sorted file names with this extension, without hidden files and macOS `._*` twins on external disks
+    (a download in progress ends in `.czesc`, so it never matches `.zip`). Raises OSError when the folder
+    cannot be listed — the caller tells a missing disk from an empty folder."""
+    return sorted(f for f in os.listdir(folder) if f.lower().endswith(rozszerzenie) and not f.startswith("."))
+
+
 def znajdz(rozszerzenie, zmienna):
     """Pack / demo path: the environment variable first, else the first matching file in the packs folder
     (None if none)."""
     if os.environ.get(zmienna):
         return os.environ[zmienna]
     try:
-        pliki = sorted(f for f in os.listdir(PACZKI) if f.lower().endswith(rozszerzenie) and not f.startswith("."))
+        pliki = pliki_w_folderze(PACZKI, rozszerzenie)
     except OSError:
         return None
     return os.path.join(PACZKI, pliki[0]) if pliki else None
+
+
+# Temporary folders this process made ($TMPDIR/lektor-ekran-*, lektor-glos-*): each owner removes its own on
+# close, and whatever is left goes at exit. Never sweep by prefix — another lektor (the live panel) uses it too.
+TYMCZASOWE = set()
+
+
+def nowy_tymczasowy(przedrostek):
+    sciezka = tempfile.mkdtemp(prefix=przedrostek)
+    TYMCZASOWE.add(sciezka)
+    return sciezka
+
+
+def usun_tymczasowy(sciezka):
+    if sciezka:
+        shutil.rmtree(sciezka, ignore_errors=True)
+        TYMCZASOWE.discard(sciezka)
+
+
+@atexit.register
+def sprzataj_tymczasowe():
+    for sciezka in list(TYMCZASOWE):
+        usun_tymczasowy(sciezka)
 
 
 def norm(text):
@@ -140,49 +172,58 @@ class Paczka:
         return (r["x"], r["y"], r["width"], r["height"]), bands, forget
 
     def nieobslugiwane(self):
-        """Pack fields (active values only) this reader does NOT apply — for marking a game in a catalogue.
-        Each item: {"pole", "opis", "czytanie"}; czytanie=False means skipping it cannot lose a line
-        (signal_detection only saves OCR work: this reader runs OCR on every tick). Empty list = all handled."""
-        out = []
-
-        def dodaj(pole, opis, czytanie=True):
-            out.append({"pole": pole, "opis": opis, "czytanie": czytanie})
-
-        for k, v in self.preset.items():
-            if k != "rois" and v:
-                dodaj(k, "pole presetu nieznane czytnikowi")
-        rois = self.preset.get("rois") or []
-        if len(rois) > 1:
-            dodaj("rois", f"{len(rois)} obszary napisów — czytany tylko pierwszy")
-        for k, v in (rois[0] if rois else {}).items():
-            if k in ("name", "rect", "center_line_filter") or not v:
-                continue
-            if k == "multi_line":
-                reszta = sorted(kk for kk, vv in v.items() if kk != "forget_frames" and vv)
-                if reszta:
-                    dodaj("multi_line", ", ".join(reszta))
-            elif k == "geometry":
-                ref = v.get("reference") or {}
-                w, h = ref.get("width"), ref.get("height")
-                if v.get("mode", "anchored") != "anchored" or (w and h and abs(w / h - 16 / 9) > 0.02):
-                    dodaj("geometry", f"tryb {v.get('mode')}, wzorzec {w}×{h} (czytnik zakłada obraz 16:9)")
-            elif k == "signal_detection":
-                dodaj(k, "pomijane — OCR w każdym odczycie", czytanie=False)
-            elif k == "preprocessing":
-                dodaj(k, ", ".join(str(x.get("kind", x)) if isinstance(x, dict) else str(x) for x in v))
-            else:
-                dodaj(k, "pole obszaru nieobsługiwane")
-        znane = {"capture_interval", "adaptive_capture", "backoff_after_quiet_ticks", "backoff_max_interval_ms"}
-        for k, v in (self.settings.get("ocr") or {}).items():
-            if k == "match_strategy" and v and v != "wholetext":
-                dodaj("ocr.match_strategy", str(v))
-            elif k not in znane and k != "match_strategy" and v:
-                dodaj(f"ocr.{k}", "ustawienie nieobsługiwane")
-        return out
+        return nieobslugiwane(self.preset, self.settings)
 
     def dzwiek(self, idx):
         with self.lock:
             return self.zip.read(self.audio[idx])
+
+    def zamknij(self):
+        with self.lock:  # a clip being read for the phone finishes first
+            self.zip.close()
+
+
+def nieobslugiwane(preset, settings):
+    """Pack fields (active values only) this reader does NOT apply — for marking a game in a catalogue.
+    Takes only preset.json and settings.json, so the catalogue does not have to parse subtitles.json.
+    Each item: {"pole", "opis", "czytanie"}; czytanie=False means skipping it cannot lose a line
+    (signal_detection only saves OCR work: this reader runs OCR on every tick). Empty list = all handled."""
+    out = []
+
+    def dodaj(pole, opis, czytanie=True):
+        out.append({"pole": pole, "opis": opis, "czytanie": czytanie})
+
+    for k, v in preset.items():
+        if k != "rois" and v:
+            dodaj(k, "pole presetu nieznane czytnikowi")
+    rois = preset.get("rois") or []
+    if len(rois) > 1:
+        dodaj("rois", f"{len(rois)} obszary napisów — czytany tylko pierwszy")
+    for k, v in (rois[0] if rois else {}).items():
+        if k in ("name", "rect", "center_line_filter") or not v:
+            continue
+        if k == "multi_line":
+            reszta = sorted(kk for kk, vv in v.items() if kk != "forget_frames" and vv)
+            if reszta:
+                dodaj("multi_line", ", ".join(reszta))
+        elif k == "geometry":
+            ref = v.get("reference") or {}
+            w, h = ref.get("width"), ref.get("height")
+            if v.get("mode", "anchored") != "anchored" or (w and h and abs(w / h - 16 / 9) > 0.02):
+                dodaj("geometry", f"tryb {v.get('mode')}, wzorzec {w}×{h} (czytnik zakłada obraz 16:9)")
+        elif k == "signal_detection":
+            dodaj(k, "pomijane — OCR w każdym odczycie", czytanie=False)
+        elif k == "preprocessing":
+            dodaj(k, ", ".join(str(x.get("kind", x)) if isinstance(x, dict) else str(x) for x in v))
+        else:
+            dodaj(k, "pole obszaru nieobsługiwane")
+    znane = {"capture_interval", "adaptive_capture", "backoff_after_quiet_ticks", "backoff_max_interval_ms"}
+    for k, v in (settings.get("ocr") or {}).items():
+        if k == "match_strategy" and v and v != "wholetext":
+            dodaj("ocr.match_strategy", str(v))
+        elif k not in znane and k != "match_strategy" and v:
+            dodaj(f"ocr.{k}", "ustawienie nieobsługiwane")
+    return out
 
 
 # ---------------------------------------------------------------- matching
@@ -398,11 +439,12 @@ class ZrodloEkran:
             kadr = (gx, gy + gora, gw, gh)
         self.rect = tuple(int(round(v)) for v in wytnij(kadr, frac))
         self.kadr = tuple(int(round(v)) for v in kadr)
-        self.tmp = os.path.join(tempfile.mkdtemp(prefix="lektor-ekran-"), "obszar.png")
+        self.folder = nowy_tymczasowy("lektor-ekran-")
+        self.tmp = os.path.join(self.folder, "obszar.png")
         self.koniec = False
 
     def zamknij(self):
-        pass
+        usun_tymczasowy(self.folder)
 
     def _zrzut(self, rect, path):
         x, y, w, h = rect  # -R takes points; the PNG comes out in Retina pixels
@@ -442,7 +484,8 @@ class Glos(threading.Thread):
         self.p, self.glosnosc, self.cicho = paczka, glosnosc, cicho  # glosnosc may change live (0..2)
         self.q = collections.deque(maxlen=kolejka)
         self.cv = threading.Condition()
-        self.tmp = tempfile.mkdtemp(prefix="lektor-glos-")
+        self.tmp = nowy_tymczasowy("lektor-glos-")
+        self.koniec = False  # set by zamknij(): the worker thread ends and lets the pack go
         self.gra, self.poz = None, 0  # samples being played and position (read by the audio callback)
         self.lock = threading.Lock()
         self.wolne = threading.Event()
@@ -461,6 +504,14 @@ class Glos(threading.Thread):
             self.stream.stop()
             self.stream.close()
             self.stream = None
+        with self.cv:
+            self.koniec = True
+            self.q.clear()
+            self.cv.notify()
+        with self.lock:  # a line cut off by the closed stream must not hold the worker in wolne.wait()
+            self.gra = None
+            self.wolne.set()
+        usun_tymczasowy(self.tmp)
 
     def _callback(self, out, frames, czas, status):
         with self.lock:
@@ -503,18 +554,23 @@ class Glos(threading.Thread):
     def run(self):
         while True:
             with self.cv:
-                while not self.q:
+                while not self.q and not self.koniec:
                     self.cv.wait()
+                if self.koniec:
+                    return
                 idx = self.q.popleft()
             if self.cicho:
                 continue
             try:
                 x = self._dekoduj(idx)
             except Exception as e:  # one broken file must not stop the voice
-                self.na_info(f"   ! nie odtworzyłem {self.p.ids[idx]}: {e}")
+                if not self.koniec:
+                    self.na_info(f"   ! nie odtworzyłem {self.p.ids[idx]}: {e}")
                 continue
             self.wolne.wait()  # previous line finished
             with self.lock:
+                if self.koniec:
+                    return
                 self.gra, self.poz = x, 0
                 self.wolne.clear()
 
@@ -690,9 +746,8 @@ def main():
         while glos.zajety() and time.time() < koniec:  # let the last line finish
             time.sleep(0.1)
         time.sleep(0.3)
-    if glos.stream:
-        glos.stream.stop()
-        glos.stream.close()
+    glos.zamknij()
+    src.zamknij()
 
 
 if __name__ == "__main__":

@@ -12,41 +12,88 @@
 <link rel="apple-touch-icon" href="/ikona-180.png">
 <link rel="manifest" href="/manifest.json">
 <style>
-:root{--ink:#fff;--ink2:rgba(255,255,255,.72);--ink3:rgba(255,255,255,.5);--card:rgba(26,12,52,.72);--line:rgba(255,255,255,.14);
---pink:#ff4f9a;--orange:#ff9a4a;--ok:#4be3a3;--warn:#ffcc66;--bad:#ff6b6b}
+/* Colours of the play button and highlights come from the look (Ustawienia → Wygląd): the game theme (from its
+   cover, darkened on the server until white text has >= 4.5:1) or a fixed background. */
+:root{--ink:#fff;--ink2:rgba(255,255,255,.74);--ink3:rgba(255,255,255,.55);--card:rgba(20,12,40,.74);--line:rgba(255,255,255,.14);
+--akcent:#e80063;--akcent2:#bf5500;--tlo:#140a2c;--ok:#4be3a3;--warn:#ffcc66;--bad:#ff6b6b;--info:#8cc8ff}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:#140a2c;color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif}
-body{background:linear-gradient(90deg,rgba(16,7,36,.94) 0%,rgba(16,7,36,.80) 55%,rgba(16,7,36,.45) 100%),url(/grafiki/tlo.jpg) right center/cover fixed}
-.wrap{max-width:760px;margin:0 auto;padding:26px 24px 40px}
-header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+html,body{margin:0;min-height:100%;background:var(--tlo);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif}
+body{background:var(--tlo)}
+#tlo{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:right center;transition:background .3s}
+body.w-klasyczny #tlo{background-image:linear-gradient(90deg,rgba(16,7,36,.94) 0%,rgba(16,7,36,.80) 55%,rgba(16,7,36,.45) 100%),url(/grafiki/tlo.jpg)}
+body.w-grafit #tlo{background-image:radial-gradient(120% 90% at 85% 0%,#2a2e36 0%,#15171c 55%,#0e0f12 100%)}
+body.w-granat #tlo{background-image:radial-gradient(120% 90% at 85% 0%,#1d2f5c 0%,#0d1730 55%,#080e1f 100%)}
+body.w-motyw #tlo{background-image:linear-gradient(180deg,color-mix(in srgb,var(--tlo) 82%,transparent) 0%,var(--tlo) 72%),var(--okladka,none);background-position:center top;background-size:cover}
+.wrap{max-width:820px;margin:0 auto;padding:22px 24px 40px}
+header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
 .logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(160deg,#3a1670,#b0267a 55%,#ff7a45);display:grid;place-items:center;flex:none}
 h1{font-size:26px;margin:0;font-weight:700;letter-spacing:.3px}
+h2{font-size:22px;margin:0 0 4px}
 .sub{color:var(--ink2);font-size:14px;margin:0}
 .pill{margin-left:auto;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.1);border:1px solid var(--line);white-space:nowrap}
 .pill.ok{background:rgba(75,227,163,.16);border-color:rgba(75,227,163,.5);color:var(--ok)}
-.pill.run{background:rgba(255,79,154,.18);border-color:rgba(255,79,154,.6);color:#ffb3d3}
+.pill.run{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.45);color:#fff}
 .pill.bad{background:rgba(255,107,107,.16);border-color:rgba(255,107,107,.55);color:#ffb0b0}
-.alert{border-radius:14px;padding:12px 16px;margin:0 0 14px;font-size:14px;display:none;align-items:center;gap:12px}
+nav{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
+nav button{border:1px solid var(--line);background:rgba(255,255,255,.06);border-radius:999px;padding:8px 16px;font:inherit;font-weight:600;color:var(--ink2);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav button.on{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.4)}
+nav .zebatka{margin-left:auto}
+.alert{border-radius:14px;padding:12px 16px;margin:0 0 14px;font-size:14px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
 .alert.show{display:flex}
 .alert.bad{background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.5)}
 .alert.warn{background:rgba(255,204,102,.13);border:1px solid rgba(255,204,102,.45)}
-.alert span{flex:1}
+.alert span{flex:1;min-width:200px}
 .alert button{flex:none}
 .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:14px;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .step{font-size:13px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--ink3);margin:0 0 12px}
+.widok{display:none}.widok.on{display:block}
+/* catalogue */
+.gry{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.kafel{position:relative;border:2px solid transparent;border-radius:16px;background:var(--card);padding:0 0 12px;cursor:pointer;text-align:left;overflow:hidden;color:var(--ink);font:inherit;transition:transform .12s,border-color .12s}
+.kafel:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.35)}
+.kafel.wybrana{border-color:var(--akcent)}
+.kafel .ok-img{width:100%;aspect-ratio:460/215;object-fit:cover;display:block;background:rgba(255,255,255,.06)}
+.kafel .bez{width:100%;aspect-ratio:460/215;display:grid;place-items:center;background:rgba(255,255,255,.06);color:var(--ink3);font-size:30px}
+.kafel b{display:block;font-size:15px;padding:8px 12px 2px;line-height:1.3}
+.kafel .znak{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
+.kafel.wylaczony{opacity:.62}
+.odznaka{display:inline-block;margin:4px 12px 0;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid currentColor}
+.s-sprawdzona{color:var(--ok)}.s-nagranie{color:var(--info)}.s-niesprawdzona,.s-wczytuje,.s-nie_na_dysku{color:var(--ink2)}
+.s-ryzyko{color:var(--warn)}.s-nie_na_macu,.s-blad{color:#ffb0b0}
+.pusto{text-align:center;padding:26px 18px}
+.pusto p{margin:6px 0 14px;color:var(--ink2)}
+/* game screen */
+.bohater{display:flex;gap:18px;align-items:flex-start}
+.bohater img{width:300px;max-width:42%;aspect-ratio:460/215;object-fit:cover;border-radius:14px;flex:none;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.bohater .meta{flex:1;min-width:0}
+.autor{color:var(--ink3);font-size:13px;margin:0 0 8px}
+.opis{color:var(--ink2);font-size:14px;margin:10px 0 0}
+.opis.krotki{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.ramka{border:1px solid rgba(255,204,102,.45);background:rgba(255,204,102,.10);border-radius:14px;padding:12px 16px;margin-top:14px}
+.ramka b{color:#ffe2a8}
+.ramka ul{margin:6px 0 0;padding-left:20px;color:#ffe9c2}
+.sluchasz{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--ink2);font-size:14px}
+.link{background:none;border:none;color:#fff;text-decoration:underline;cursor:pointer;font:inherit;padding:0}
+/* settings + shared controls */
 .profiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .prof{border:2px solid transparent;border-radius:16px;background:rgba(255,255,255,.05);padding:0 0 12px;cursor:pointer;text-align:center;transition:transform .12s,border-color .12s,background .12s;overflow:hidden;color:var(--ink);font:inherit}
 .prof:hover{transform:translateY(-2px);background:rgba(255,255,255,.09)}
-.prof.on{border-color:var(--pink);background:rgba(255,79,154,.12);box-shadow:0 0 0 4px rgba(255,79,154,.15)}
+.prof.on{border-color:var(--akcent);background:rgba(255,255,255,.10);box-shadow:0 0 0 4px rgba(255,255,255,.08)}
 .prof img{width:100%;aspect-ratio:1;object-fit:cover;display:block;margin-bottom:8px}
 .prof b{display:block;font-size:15px}
 .prof span{display:block;font-size:12.5px;color:var(--ink2);padding:2px 8px 0;line-height:1.35}
+.wyglady{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.wyg{border:2px solid var(--line);border-radius:14px;padding:0 0 8px;cursor:pointer;background:rgba(255,255,255,.04);color:var(--ink);font:inherit;overflow:hidden;text-align:center}
+.wyg.on{border-color:#fff}
+.wyg i{display:block;height:54px;margin-bottom:6px;background-size:cover;background-position:center}
+.wyg span{font-size:13px;font-weight:600}
+.wyg small{display:block;font-size:11.5px;color:var(--ink3)}
 .row{display:flex;align-items:center;gap:12px;margin:10px 0}
 .row label{min-width:132px;color:var(--ink2);font-size:14px}
 select,button{font:inherit;color:var(--ink)}
 select{flex:1;min-width:0;background:rgba(255,255,255,.08);border:1px solid var(--line);border-radius:10px;padding:9px 12px;-webkit-appearance:none;appearance:none}
 select option{color:#111}
-input[type=range]{flex:1;accent-color:var(--pink);height:28px}
+input[type=range]{flex:1;accent-color:var(--akcent);height:28px}
 .vol{min-width:52px;text-align:right;font-weight:700}
 button{touch-action:manipulation}  /* fast taps on + / − must not zoom the page on iPhone */
 .volBox{margin:12px 0 4px}
@@ -56,12 +103,14 @@ button{touch-action:manipulation}  /* fast taps on + / − must not zoom the pag
 .krok{width:44px;height:44px;padding:0;font-size:24px;line-height:1;flex:none}
 .btn{border:1px solid var(--line);background:rgba(255,255,255,.08);border-radius:12px;padding:10px 16px;cursor:pointer;font-weight:600}
 .btn:hover{background:rgba(255,255,255,.14)}
+.btn:disabled{opacity:.5;cursor:default}
 .btn.small{padding:8px 12px;font-size:13px}
 .hint{display:flex;gap:10px;align-items:flex-start;background:rgba(255,204,102,.10);border:1px solid rgba(255,204,102,.32);border-radius:12px;padding:10px 14px;font-size:13.5px;color:#ffe2a8;margin-top:12px}
-.actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:4px}
-.play{flex:1;min-width:220px;border:none;border-radius:16px;padding:18px 20px;font-size:19px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--pink),var(--orange));box-shadow:0 10px 30px rgba(255,79,154,.35);display:flex;align-items:center;justify-content:center;gap:10px}
+.actions{display:flex;gap:12px;flex-wrap:wrap;margin:4px 0 14px}
+.play{flex:1;min-width:220px;border:none;border-radius:16px;padding:18px 20px;font-size:19px;font-weight:800;cursor:pointer;color:#fff;background:linear-gradient(90deg,var(--akcent),var(--akcent2));box-shadow:0 10px 30px rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:10px}
 .play:hover{filter:brightness(1.07)}
-.play.stop{background:linear-gradient(90deg,#5b2a8a,#8a2a5f);box-shadow:none}
+.play:disabled{opacity:.55;cursor:default;filter:none}
+.play.stop{background:linear-gradient(90deg,#4a2a6e,#6e2a4f);box-shadow:none}
 .lines{list-style:none;margin:0;padding:0}
 .lines li{padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px}
 .lines li:last-child{border-bottom:none}
@@ -73,7 +122,7 @@ details summary::before{content:"▸ ";}
 details[open] summary::before{content:"▾ ";}
 .radios{display:flex;gap:8px;flex-wrap:wrap}
 .radios label{min-width:0;border:1px solid var(--line);border-radius:10px;padding:8px 12px;cursor:pointer;color:var(--ink);background:rgba(255,255,255,.05)}
-.radios input{accent-color:var(--pink);margin-right:6px}
+.radios input{accent-color:var(--akcent);margin-right:6px}
 .log{font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--ink3);white-space:pre-wrap;max-height:140px;overflow:auto;margin:10px 0 0}
 .pilot{display:flex;gap:18px;align-items:flex-start}
 .qr{flex:none;background:#fff;border-radius:14px;padding:10px;line-height:0}
@@ -86,34 +135,91 @@ details[open] summary::before{content:"▾ ";}
 .telbtn.on{background:rgba(75,227,163,.15);color:var(--ok);border:1px solid rgba(75,227,163,.5)}
 .teldiag{font-size:13px;color:var(--ink2);margin:10px 0 0}
 /* phone: one thumb — big controls, Play/Stop pinned to the bottom edge */
-body.tel{background-attachment:scroll;background-position:70% top}
 body.tel .wrap{padding:calc(14px + env(safe-area-inset-top)) 14px calc(118px + env(safe-area-inset-bottom))}
-body.tel h1{font-size:22px} body.tel .sub{display:none} body.tel .logo{width:44px;height:44px}
+body.tel h1{font-size:22px;white-space:nowrap} body.tel .sub{display:none} body.tel .logo{width:44px;height:44px}
+body.tel .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body.tel nav{flex-wrap:nowrap} body.tel nav button{min-width:0;flex:0 1 auto} body.tel nav .zebatka{flex:none}
+body.tel .zebatka .opis{display:none}
 body.tel .macOnly{display:none!important}
-body.tel .actions{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(rgba(20,10,44,0),#140a2c 34%);flex-wrap:nowrap}
+body.tel .actions{position:fixed;left:0;right:0;bottom:0;z-index:5;margin:0;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(color-mix(in srgb,var(--tlo) 0%,transparent),var(--tlo) 34%);flex-wrap:nowrap}
 body.tel .play{min-width:0;padding:20px 14px;font-size:20px}
-body.tel #demo{flex:none;padding:0 14px;border-radius:16px}
+body.tel .actions .btn{flex:none;padding:0 14px;border-radius:16px}
 body.tel input[type=range]{height:44px}
 body.tel select{padding:12px}
 body.tel .krok{width:54px;height:54px;font-size:30px}
 body.tel .row label{min-width:86px}
 body:not(.tel) .telOnly{display:none!important}
-@media (max-width:620px){.profiles{grid-template-columns:1fr 1fr}.prof span{display:none}.prof{padding-bottom:10px}.prof img{margin-bottom:6px}.row label{min-width:96px}.pilot{flex-direction:column}}
+@media (max-width:620px){.gry{grid-template-columns:1fr 1fr;gap:10px}.kafel b{font-size:14px;padding:6px 10px 0}.odznaka{margin:4px 10px 0;font-size:11.5px}
+ .profiles{grid-template-columns:1fr 1fr}.prof span{display:none}.prof{padding-bottom:10px}.prof img{margin-bottom:6px}
+ .wyglady{grid-template-columns:1fr 1fr}.row label{min-width:96px}.pilot{flex-direction:column}
+ .bohater{flex-direction:column}.bohater img{width:100%;max-width:100%}}
 </style>
 </head>
-<body>
+<body class="w-klasyczny">
+<div id="tlo"></div>
 <div class="wrap">
 <header>
   <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M8 21h8"/></svg></div>
-  <div><h1>GTA Lektor</h1><p class="sub">Polski lektor do GTA VI — czyta napisy z gry</p></div>
+  <div><h1>GTA Lektor</h1><p class="sub">Polski lektor do gier — czyta napisy z gry</p></div>
   <div class="pill" id="pill">Łączę…</div>
 </header>
 
-<div class="alert bad" id="alPaczka"><span id="alPaczkaTxt"></span><button class="btn small macOnly" onclick="api('/api/folder-paczek')">Otwórz folder paczek</button><button class="btn small" onclick="api('/api/paczka')">Sprawdź ponownie</button></div>
+<nav>
+  <button id="navKatalog" data-w="katalog">🎮 Moje gry</button>
+  <button id="navGra" data-w="gra" style="display:none"></button>
+  <button id="navUst" class="zebatka" data-w="ustawienia" aria-label="Ustawienia">⚙︎<span class="opis"> Ustawienia</span></button>
+</nav>
+
+<div class="alert warn" id="alWersja"><span>Jest nowsza wersja panelu. Odśwież, kiedy skończysz słuchać (odświeżenie wyłącza dźwięk w tym iPhonie do następnego stuknięcia).</span><button class="btn small" onclick="location.reload()">Odśwież</button></div>
+<div class="alert bad" id="alPaczka"><span id="alPaczkaTxt"></span><button class="btn small macOnly" onclick="api('/api/folder-paczek')">Otwórz folder paczek</button><button class="btn small" onclick="odswiezKatalog()">Sprawdź ponownie</button></div>
 <div class="alert warn" id="alZgoda"><span>macOS musi pozwolić „GTA Lektor” widzieć ekran (napisy gry). Kliknij, zaznacz „GTA Lektor” na liście i uruchom panel jeszcze raz.</span><button class="btn small macOnly" onclick="api('/api/zgoda-ekranu')">Otwórz ustawienia</button></div>
 <div class="alert warn" id="alWarn"><span id="alWarnTxt"></span></div>
 <div class="alert bad" id="alSiec"><span>Nie mogę połączyć się z Makiem. Czy panel GTA Lektor na Macu jest otwarty, a telefon w tym samym Wi-Fi?</span></div>
 
+<!-- ============================================================ catalogue -->
+<section class="widok" id="vKatalog">
+  <div class="card pusto" id="katStan" style="display:none">
+    <h2 id="katStanTytul"></h2><p id="katStanTxt"></p>
+    <button class="btn" onclick="odswiezKatalog()">Sprawdź ponownie</button>
+    <button class="btn macOnly" id="katFolder" onclick="api('/api/folder-paczek')">Otwórz folder paczek</button>
+  </div>
+  <div id="katLista">
+    <p class="step">Moje gry — paczki lektora na dysku</p>
+    <div class="gry" id="gry"></div>
+  </div>
+</section>
+
+<!-- ============================================================ game screen -->
+<section class="widok" id="vGra">
+  <div class="card">
+    <div class="bohater">
+      <img id="graOkl" alt="">
+      <div class="meta">
+        <h2 id="graNazwa"></h2>
+        <p class="autor" id="graAutor"></p>
+        <span class="odznaka" id="graOdznaka" style="margin-left:0"></span>
+        <p class="small" id="graStanOpis" style="color:var(--ink2)"></p>
+      </div>
+    </div>
+    <p class="opis krotki" id="graOpis"></p>
+    <button class="link small" id="graOpisWiecej" style="display:none">Pokaż cały opis</button>
+    <div class="ramka" id="graRamka" style="display:none"><b>⚙︎ Ustaw w grze</b> <span class="small">(słowa autora paczki)</span><ul id="graWymagania"></ul></div>
+  </div>
+  <div class="card sluchasz" id="graSluchasz"></div>
+  <div class="actions" id="graAkcje">
+    <button class="play" id="play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 4v16l13-8z"/></svg><span id="playTxt">Graj</span></button>
+    <button class="btn" id="probka">Posłuchaj próbki</button>
+    <button class="btn" id="demo">Demo<span class="macOnly"> (posłuchaj)</span></button>
+  </div>
+  <section class="card">
+    <p class="step">Ostatnie kwestie</p>
+    <ul class="lines" id="lines"></ul>
+    <p class="empty" id="linesEmpty">Tu pojawią się zdania, które czyta lektor.</p>
+  </section>
+</section>
+
+<!-- ============================================================ general settings -->
+<section class="widok" id="vUstawienia">
 <section class="card">
   <p class="step">1 · Jak słuchasz?</p>
   <div class="profiles" id="profiles">
@@ -141,15 +247,14 @@ body:not(.tel) .telOnly{display:none!important}
   <p class="small" id="volHint"></p>
 </section>
 
-<div class="actions">
-  <button class="play" id="play"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><path d="M7 4v16l13-8z"/></svg><span id="playTxt">Graj — otwórz Xbox i włącz lektora</span></button>
-  <button class="btn" id="demo">Demo<span class="macOnly"> (posłuchaj)</span></button>
-</div>
-
-<section class="card" style="margin-top:14px">
-  <p class="step">Ostatnie kwestie</p>
-  <ul class="lines" id="lines"></ul>
-  <p class="empty" id="linesEmpty">Tu pojawią się zdania, które czyta lektor.</p>
+<section class="card">
+  <p class="step">3 · Wygląd</p>
+  <div class="wyglady" id="wyglady">
+    <button class="wyg" data-w="motyw"><i style="background:linear-gradient(135deg,#b56003,#d93744 50%,#395665)"></i><span>Motyw gry</span><small>automatyczny, z okładki</small></button>
+    <button class="wyg" data-w="klasyczny"><i style="background-image:url(/grafiki/tlo.jpg)"></i><span>Klasyczny</span><small>tło lektora</small></button>
+    <button class="wyg" data-w="grafit"><i style="background:radial-gradient(120% 90% at 85% 0%,#2a2e36,#15171c 55%,#0e0f12)"></i><span>Grafit</span><small>spokojne, ciemne</small></button>
+    <button class="wyg" data-w="granat"><i style="background:radial-gradient(120% 90% at 85% 0%,#1d2f5c,#0d1730 55%,#080e1f)"></i><span>Granat</span><small>spokojne, ciemne</small></button>
+  </div>
 </section>
 
 <section class="card macOnly" id="pilot">
@@ -186,12 +291,14 @@ body:not(.tel) .telOnly{display:none!important}
     </div>
   </details>
 </section>
+</section>
 </div>
 
 <script>
 // Phone mode = opened from the network (the iPhone remote); on the Mac the panel lives on 127.0.0.1.
 const TEL=!["127.0.0.1","localhost","[::1]"].includes(location.hostname);
 const Q=new URLSearchParams(location.search), K=Q.get("k")||"", CID=Math.random().toString(36).slice(2,12);
+const WERSJA="__WERSJA__", BEZ_WERSJI="__WER"+"SJA__";  // the server writes the page version into the first one
 if(TEL) document.body.classList.add("tel");
 const HINT={
  tv_mac:"W Chrome wycisz kartę Xbox: prawy klik na karcie → „Wycisz witrynę”. Grę słyszysz z telewizora, lektora z Maca.",
@@ -199,18 +306,103 @@ const HINT={
  sluchawki:"Połącz słuchawki z Makiem. W Chrome włącz dźwięk karty Xbox (prawy klik → „Wyłącz wyciszenie witryny”) i wycisz telewizor. Dźwięk gry ze strumienia może być lekko spóźniony względem obrazu na TV.",
  iphone: TEL ? "Stuknij „Włącz dźwięk” niżej. Lektor gra też przy zablokowanym ekranie — tylko nie zamykaj pilota (nie przesuwaj go w górę w przełączniku aplikacji)."
              : "Lektor zagra z iPhone'a: otwórz pilota w telefonie (kod QR na dole) i stuknij „Włącz dźwięk w tym iPhonie”. W Chrome wycisz kartę Xbox."};
+const PROFIL_NAZWA={tv_mac:"TV + Mac",tv_glosnik:"TV + głośnik",sluchawki:"Słuchawki",iphone:"iPhone"};
+const STALE={klasyczny:{akcent:"#e80063",akcent2:"#bf5500",tlo:"#140a2c"},grafit:{akcent:"#476af5",akcent2:"#7950f2",tlo:"#15171c"},
+ granat:{akcent:"#e12567",akcent2:"#ae6500",tlo:"#0d1730"}};
 const DEV_RE={tv_mac:/macbook|głośniki|built-in|wbudowan/i, sluchawki:/airpods|słuchawk|headphone|buds|beats|wh-|bose/i,
  wirtualne:/teams|zoom|blackhole|loopback|soundflower|aggregate|multi-output|wielowyjściow|agregat|virtual|wirtualn/i};
-let st=null, devs=[], profil="tv_mac", zrodlo="ekran", devTouched=false, volTimer=null, volDrag=0, profTouched=0, qrCo="local";
+let st=null, kat=null, katNr=-1, widok=null, graWidok=null, devs=[], profil="tv_mac", zrodlo="ekran", devTouched=false,
+    volTimer=null, volDrag=0, profTouched=0, qrCo="local", wygladTouched=0;
 const $=id=>document.getElementById(id);
 const H=()=>TEL?{"X-Lektor-Klucz":K}:{};
 const z=url=>url+(url.includes("?")?"&":"?")+"c="+CID;
+const esc=s=>String(s??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+const okladka=id=>"/api/okladka/"+encodeURIComponent(id)+(TEL?"?k="+encodeURIComponent(K):"");  // <img> cannot send the header
 
 async function api(url,body){
   const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-Lektor":"1",...H()},body:JSON.stringify(body||{})});
   return r.json();
 }
 const get=url=>fetch(url,{headers:H()});
+const gra=id=>kat&&kat.gry.find(g=>g.id===id);
+
+// ------------------------------------------------------------------ views (catalogue → game → settings)
+function pokaz(w,id){
+  if(w==="gra"&&!id) w="katalog";
+  widok=w; if(w==="gra") graWidok=id;
+  ["katalog","gra","ustawienia"].forEach(n=>$("v"+n[0].toUpperCase()+n.slice(1)).classList.toggle("on",n===w));
+  $("navKatalog").classList.toggle("on",w==="katalog"); $("navUst").classList.toggle("on",w==="ustawienia"); $("navGra").classList.toggle("on",w==="gra");
+  const h=w==="gra"?"#gra="+encodeURIComponent(id):"#"+w; if(location.hash!==h) history.replaceState(null,"",location.pathname+location.search+h);
+  renderGra(); motyw(); scrollTo(0,0);
+}
+function zHasha(){ const h=decodeURIComponent(location.hash.slice(1)); if(h.startsWith("gra=")) return ["gra",h.slice(4)]; return [["katalog","ustawienia"].includes(h)?h:null]; }
+$("navKatalog").onclick=()=>pokaz("katalog"); $("navUst").onclick=()=>pokaz("ustawienia"); $("navGra").onclick=()=>pokaz("gra",graWidok);
+addEventListener("hashchange",()=>{ const [w,id]=zHasha(); if(w) pokaz(w,id); });
+
+function motyw(){  // Ustawienia → Wygląd: the game theme (the game on screen, else the chosen one) or a fixed background
+  const w=st?st.ustawienia.wyglad:"motyw";
+  const id=(widok==="gra"&&graWidok)||(st&&st.gra&&st.gra.id)||(st&&st.ustawienia.gra), g=gra(id);
+  const m=w==="motyw"&&g&&g.motyw?g.motyw:null, c=m||STALE[w]||STALE.klasyczny;
+  const tryb=m?"motyw":(w==="motyw"?"klasyczny":w);
+  document.body.className=document.body.className.replace(/\bw-\S+/g,"").trim()+" w-"+tryb;
+  const s=document.documentElement.style; s.setProperty("--akcent",c.akcent); s.setProperty("--akcent2",c.akcent2); s.setProperty("--tlo",c.tlo);
+  s.setProperty("--okladka",m&&g.okladka?`url("${okladka(g.id)}")`:"none");
+  document.querySelector('meta[name=theme-color]').content=c.tlo;
+  document.querySelectorAll(".wyg").forEach(b=>b.classList.toggle("on",b.dataset.w===w));
+}
+document.querySelectorAll(".wyg").forEach(b=>b.onclick=async()=>{ wygladTouched=Date.now(); if(st) st.ustawienia.wyglad=b.dataset.w; motyw(); await api("/api/ustawienia",{wyglad:b.dataset.w}); });
+
+const TYTUL={blad_pobrania:"Nie mogę pobrać listy gier",brak_dysku:"Nie widzę dysku z grami",brak_folderu:"Nie ma folderu paczek",pusty:"Nie masz jeszcze żadnej gry",blad:"Nie mogę odczytać folderu paczek",skanuje:"Sprawdzam folder paczek…"};
+function renderKatalog(){
+  if(!kat) return;
+  const ok=kat.stan==="ok";  // a broken disk never looks like an empty catalogue: each folder state has its own text
+  $("katStan").style.display=ok?"none":""; $("katLista").style.display=ok?"":"none";
+  if(!ok){ $("katStanTytul").textContent=TYTUL[kat.stan]||"Katalog"; $("katStanTxt").textContent=kat.komunikat||""; $("katFolder").style.display=kat.stan==="brak_dysku"?"none":""; }
+  const wyb=st&&st.ustawienia.gra;
+  const html=kat.gry.map(g=>{
+    const wyl=["nie_na_macu","blad","nie_na_dysku"].includes(g.stan);
+    const obraz=g.okladka?`<img class="ok-img" src="${okladka(g.id)}" alt="" loading="lazy">`:`<div class="bez">${g.stan==="wczytuje"?"…":"🎮"}</div>`;
+    return `<button class="kafel${g.id===wyb?" wybrana":""}${wyl?" wylaczony":""}" data-id="${esc(g.id)}" title="${esc(g.stan_opis)}">${obraz}`
+      +(g.id===wyb?`<span class="znak">${st&&st.dziala&&st.gra&&st.gra.id===g.id?"▶ czyta":"✓ wybrana"}</span>`:"")
+      +`<b>${esc(g.nazwa)}</b><span class="odznaka s-${esc(g.stan)}">${esc(g.stan_nazwa)}</span></button>`;}).join("");
+  if(html===renderKatalog.bylo) return;  // render() runs every second: redraw only on change (no cover refetch on the phone)
+  renderKatalog.bylo=html; $("gry").innerHTML=html;
+  document.querySelectorAll(".kafel").forEach(b=>b.onclick=()=>pokaz("gra",b.dataset.id));  // opening ≠ choosing: chosen on Graj / sample
+}
+async function wczytajKatalog(nr){  // the catalogue number is taken only after a good answer: a failure is retried
+  try{ const r=await get("/api/katalog"); if(!r.ok) throw new Error("HTTP "+r.status);
+    kat=await r.json(); if(nr!=null) katNr=nr; renderKatalog(); renderGra(); motyw(); }
+  catch(e){ if(kat) return;  // keep the last good list; with none, say so — a failure never looks like an empty catalogue
+    kat={stan:"blad_pobrania",komunikat:"Nie mogę pobrać listy gier z Maca ("+(e.message||e)+"). Ponawiam za chwilę.",gry:[]}; renderKatalog(); }
+}
+async function odswiezKatalog(){ const r=await api("/api/paczka"); if(r&&r.ok===false) alert(r.blad); }  // a new list arrives by katalog_nr
+
+function renderGra(){
+  const g=gra(graWidok); $("navGra").style.display=g?"":"none"; if(g) $("navGra").textContent=g.nazwa;
+  if(!g||!st) return;
+  if($("graOkl").dataset.id!==g.id){ $("graOkl").dataset.id=g.id; $("graOkl").src=g.okladka?okladka(g.id):""; $("graOkl").style.display=g.okladka?"":"none";
+    $("graOpis").classList.add("krotki"); }
+  $("graNazwa").textContent=g.nazwa; $("graAutor").textContent=[g.autor&&"Paczka: "+g.autor,g.wersja&&"wersja "+g.wersja].filter(Boolean).join(" · ");
+  $("graOdznaka").className="odznaka s-"+g.stan; $("graOdznaka").textContent=g.stan_nazwa; $("graStanOpis").textContent=g.stan_opis||"";
+  $("graOpis").textContent=g.opis||""; $("graOpisWiecej").style.display=(g.opis||"").length>260&&$("graOpis").classList.contains("krotki")?"":"none";
+  const wym=g.wymagania||[]; $("graRamka").style.display=wym.length?"":"none"; $("graWymagania").innerHTML=wym.map(w=>`<li>${esc(w)}</li>`).join("");
+  const gl=Math.round((st.ustawienia[profil==="iphone"?"glosnosc_iphone":"glosnosc"]??1)*100);
+  $("graSluchasz").innerHTML=`<span>🎧 Słuchasz: <b>${esc(PROFIL_NAZWA[profil])}</b>${profil==="iphone"?"":" · "+esc($("dev").value||"domyślne wyjście")} · ${profil==="iphone"?"wzmocnienie":"głośność"} ${gl}%</span><button class="link" onclick="pokaz('ustawienia')">Zmień w Ustawieniach</button>`;
+  const ta=st.gra&&st.gra.id===g.id, czyta=st.dziala, gotowa=!["nie_na_macu","blad","nie_na_dysku","wczytuje"].includes(g.stan);
+  const play=$("play"), inna=czyta&&!ta;
+  play.classList.toggle("stop",czyta&&ta); play.disabled=!gotowa&&!(czyta&&ta);
+  play.querySelector("svg").innerHTML=czyta&&ta?'<rect x="6" y="6" width="12" height="12" rx="2"/>':'<path d="M7 4v16l13-8z"/>';
+  $("playTxt").textContent=czyta&&ta?(st.zrodlo==="probka"?"Zatrzymaj próbkę":TEL?"Zatrzymaj":"Zatrzymaj lektora")
+    :inna?"Graj w tę grę (zatrzyma "+(st.gra&&st.gra.nazwa||"lektora")+")":TEL?"Graj":(zrodlo==="kamera"?"Graj — włącz lektora (karta)":"Graj — otwórz Xbox i włącz lektora");
+  $("probka").disabled=!gotowa; $("probka").style.display=czyta&&ta?"none":"";
+  $("demo").style.display=czyta||!g.demo?"none":"";
+  const L=st.kwestie||[]; $("linesEmpty").style.display=L.length?"none":"";
+  $("lines").innerHTML=ta?L.map(k=>`<li><time>${k.czas}</time><span>${esc(k.tekst)}</span></li>`).join(""):"";
+  if(!ta) $("linesEmpty").style.display="";
+}
+$("graOpisWiecej").onclick=()=>{ $("graOpis").classList.remove("krotki"); $("graOpisWiecej").style.display="none"; };
+
+// ------------------------------------------------------------------ general settings
 function pickDevice(){
   if(devTouched||!devs.length||profil==="iphone") return;
   const sel=$("dev"); let best=null;
@@ -223,7 +415,7 @@ function pickDevice(){
 async function devices(refresh){
   const r=await (await get("/api/urzadzenia"+(refresh?"?odswiez=1":""))).json();
   devs=r.urzadzenia||[]; const sel=$("dev"), was=sel.value;
-  sel.innerHTML=devs.map(d=>`<option value="${d.nazwa.replace(/"/g,"&quot;")}">${d.nazwa.replace(/</g,"&lt;")}${d.domyslne?" (domyślne)":""}</option>`).join("");
+  sel.innerHTML=devs.map(d=>`<option value="${esc(d.nazwa)}">${esc(d.nazwa)}${d.domyslne?" (domyślne)":""}</option>`).join("");
   const saved=st&&st.ustawienia.urzadzenie;
   if(was&&devs.some(d=>d.nazwa===was)) sel.value=was; else if(saved&&devs.some(d=>d.nazwa===saved)){sel.value=saved;devTouched=true;}
   setHint(); pickDevice();
@@ -238,40 +430,39 @@ function setVol(){  // the slider shows the volume of the profile on screen (pho
 }
 function setHint(){ $("hint").innerHTML='<span>💡</span><span>'+HINT[profil]+'</span>'; }
 function restartJesliCzyta(){  // the voice moves to the new device/profile right away (quick restart, no new Xbox tab)
-  if(st&&st.dziala&&st.zrodlo!=="demo")
-    return api("/api/start",{zrodlo:st.zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value, otworz_xbox:false}).then(tick);
+  if(st&&st.dziala&&!["demo","probka"].includes(st.zrodlo))
+    return api("/api/start",{zrodlo:st.zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value, otworz_xbox:false,
+      gra:st.gra&&st.gra.id}).then(tick);  // the same game (the server keeps it anyway; said explicitly)
 }
 async function setProfil(p,save){
   const bylo=profil; profil=p; document.querySelectorAll(".prof").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
   $("devRow").style.display=p==="iphone"?"none":"flex"; $("telAudio").style.display=p==="iphone"?"":"none";
-  devTouched=false; setHint(); setVol(); pickDevice();
+  devTouched=false; setHint(); setVol(); pickDevice(); renderGra();
   if(save){ profTouched=Date.now(); await api("/api/ustawienia",{profil:p,urzadzenie:$("dev").value}); if(bylo!==p) restartJesliCzyta(); }
 }
-function setZrodlo(z){ zrodlo=z; document.querySelectorAll('input[name=src]').forEach(r=>r.checked=r.value===z); $("camRow").style.display=z==="kamera"?"flex":"none";
-  $("playTxt").textContent= TEL?"Graj":(z==="kamera"?"Graj — włącz lektora (karta)":"Graj — otwórz Xbox i włącz lektora"); }
+function setZrodlo(z){ zrodlo=z; document.querySelectorAll('input[name=src]').forEach(r=>r.checked=r.value===z); $("camRow").style.display=z==="kamera"?"flex":"none"; }
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
 function render(){
   if(!st) return; const pill=$("pill");
-  if(st.paczka_blad&&!st.gotowy){ pill.className="pill "+(st.paczka_blad.startsWith("wczytuję")?"":"bad"); pill.textContent=st.paczka_blad.startsWith("wczytuję")?"Wczytuję paczkę…":"Brak paczki"; }
-  else if(st.dziala){ pill.className="pill run"; pill.textContent=(st.zrodlo==="demo"?"Demo · ":TEL?"Czyta · ":"Lektor czyta · ")+fmt(st.od); }
-  else { pill.className="pill ok"; pill.textContent="Gotowy"; }
+  const nazwa=st.gra&&st.gra.nazwa;
+  if(st.paczka_blad&&!st.gotowy){ const w=st.paczka_blad.startsWith("wczytuję"); pill.className="pill "+(w?"":"bad"); pill.textContent=w?"Wczytuję grę…":"Brak gry"; }
+  else if(st.dziala){ pill.className="pill run"; pill.textContent=(st.zrodlo==="demo"?"Demo · ":st.zrodlo==="probka"?"Próbka · ":TEL?"Czyta · ":"Lektor czyta · ")+fmt(st.od); }
+  else { pill.className="pill ok"; pill.textContent=nazwa&&!TEL?"Gotowy · "+nazwa:"Gotowy"; }  // the phone has the game in the tab below
   $("alSiec").classList.remove("show");
-  $("alPaczka").classList.toggle("show",!!st.paczka_blad&&!st.paczka_blad.startsWith("wczytuję"));
-  $("alPaczkaTxt").textContent=st.paczka_blad||"";
+  // a missing pack of the chosen game shows here; the catalogue itself shows folder states (no disk, empty…)
+  const blad=st.paczka_blad&&!st.paczka_blad.startsWith("wczytuję")&&!(widok==="katalog"&&kat&&kat.stan!=="ok");
+  $("alPaczka").classList.toggle("show",!!blad); $("alPaczkaTxt").textContent=st.paczka_blad||"";
   $("alZgoda").classList.toggle("show",!st.zgoda_ekranu&&zrodlo==="ekran");
-  $("alWarn").classList.toggle("show",!!st.ostrzezenie); $("alWarnTxt").textContent=(st.ostrzezenie||"").replace(/^!\s*/,"");
-  const play=$("play"); play.classList.toggle("stop",st.dziala);
-  play.querySelector("svg").innerHTML=st.dziala?'<rect x="6" y="6" width="12" height="12" rx="2"/>':'<path d="M7 4v16l13-8z"/>';
-  if(st.dziala) $("playTxt").textContent=TEL?"Zatrzymaj":"Zatrzymaj lektora"; else setZrodlo(zrodlo);
-  $("demo").style.display=st.dziala||!st.demo?"none":"";
-  // the Mac panel and the phone follow each other's volume and profile (not while this screen is being changed)
+  const ostrz=st.ostrzezenie||(!st.dziala&&st.alarm);
+  $("alWarn").classList.toggle("show",!!ostrz); $("alWarnTxt").textContent=(ostrz||"").replace(/^!\s*/,"");
+  // the Mac panel and the phone follow each other's volume, profile and look (not while this screen is being changed)
   if(!volDrag){ const v=Math.round((st.ustawienia[volKey()]??1)*100); if(+$("vol").value!==v){ $("vol").value=v; $("volTxt").textContent=v+"%"; } }
   if(st.ustawienia.profil!==profil&&Date.now()-profTouched>3000) setProfil(st.ustawienia.profil,false);
-  const L=st.kwestie||[]; $("linesEmpty").style.display=L.length?"none":"";
-  $("lines").innerHTML=L.map(k=>`<li><time>${k.czas}</time><span>${k.tekst.replace(/</g,"&lt;")}</span></li>`).join("");
   $("log").textContent=(st.komunikaty||[]).join("\n");
   if(st.pilot) renderPilot(st.pilot);
   if(TEL) renderTel();
+  if(st.katalog_nr!==katNr||(kat&&kat.stan==="blad_pobrania")) wczytajKatalog(st.katalog_nr); else renderKatalog();
+  renderGra(); if(Date.now()-wygladTouched>3000) motyw();
 }
 function renderPilot(p){
   const adr=p[qrCo]||p.ip||p.local; if(!adr) { $("pilotAdres").textContent="Mac nie jest w żadnej sieci Wi-Fi."; return; }
@@ -281,10 +472,18 @@ function renderPilot(p){
   $("qrZmien").textContent=co==="local"?"Nie otwiera się? Kod z adresem IP":"Wróć do kodu z nazwą Maca";
   const T={}; (p.telefony||[]).forEach(t=>{ if(!(t.ip in T)||t.temu<T[t.ip]) T[t.ip]=t.temu; });  // one entry per phone, not per page load
   const ile=s=>s<3?"teraz":s<120?s+" s temu":Math.round(s/60)+" min temu";
-  $("pilotTel").innerHTML=Object.keys(T).length?'<span class="ok">● Pilot połączony</span> — '+Object.entries(T).map(([ip,s])=>ip+" ("+ile(s)+")").join(", "):"Żaden telefon jeszcze się nie połączył.";
+  $("pilotTel").innerHTML=Object.keys(T).length?'<span class="ok">● Pilot połączony</span> — '+Object.entries(T).map(([ip,s])=>esc(ip)+" ("+ile(s)+")").join(", "):"Żaden telefon jeszcze się nie połączył.";
+}
+function nowaWersja(){  // old JavaScript must not stay on the phone after an update: reload once per new version
+  if(!st||!st.wersja||WERSJA===BEZ_WERSJI||st.wersja===WERSJA) return;
+  if(TEL&&A.ctx&&A.ctx.state==="running"){ $("alWersja").classList.add("show"); return; }  // a reload would silence this speaker
+  let byl=null; try{ byl=sessionStorage.getItem("lektorWersja"); }catch(e){}
+  if(byl===st.wersja){ $("alWersja").classList.add("show"); return; }  // reloaded once already: ask instead of looping
+  try{ sessionStorage.setItem("lektorWersja",st.wersja); }catch(e){}
+  location.reload();
 }
 async function tick(){
-  try{ st=await (await get(z("/api/stan"))).json(); render(); }
+  try{ st=await (await get(z("/api/stan"))).json(); nowaWersja(); render(); }
   catch(e){ $("pill").className="pill bad"; $("pill").textContent=TEL?"Brak Maca":"Panel nie odpowiada"; if(TEL) $("alSiec").classList.add("show"); }
 }
 
@@ -302,19 +501,22 @@ $("volPlus").onclick=()=>zmienVol(+$("vol").value+10);
 $("volReset").onclick=()=>zmienVol(100);
 $("cam").onchange=()=>api("/api/ustawienia",{kamera:+$("cam").value});
 let busy=false;
-$("play").onclick=async()=>{
-  if(busy) return; busy=true; $("play").style.opacity=.6;
+async function przycisk(btn,fn){ if(busy) return; busy=true; btn.style.opacity=.6; try{ await fn(); } finally { busy=false; btn.style.opacity=1; tick(); } }
+const zmianaOk=()=>!(st&&st.dziala&&st.gra&&st.gra.id!==graWidok)||confirm("Lektor czyta teraz "+(st.gra.nazwa||"inną grę")+". Przełączyć na "+((gra(graWidok)||{}).nazwa||"tę grę")+"? Czytanie tamtej gry się zatrzyma.");
+$("play").onclick=()=>przycisk($("play"),async()=>{
   if(TEL&&profil==="iphone") A.wlacz();  // this tap is also the one iOS needs to allow sound
-  try{
-    if(st&&st.dziala){ await api("/api/stop"); }
-    else{
-      const r=await api("/api/start",{zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value});
-      if(!r.ok){ if(r.zgoda) $("alZgoda").classList.add("show"); else alert(r.blad||"Nie udało się uruchomić lektora."); }
-    }
-  } finally { busy=false; $("play").style.opacity=1; tick(); }
-};
-$("demo").onclick=async()=>{ if(TEL&&profil==="iphone") A.wlacz();
-  const r=await api("/api/start",{zrodlo:"demo", profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100}); if(!r.ok) alert(r.blad); tick(); };
+  if(st&&st.dziala&&st.gra&&st.gra.id===graWidok){ const r=await api("/api/stop"); if(r.ok===false) alert(r.blad); return; }
+  if(!zmianaOk()) return;
+  const r=await api("/api/start",{zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value, gra:graWidok});
+  if(!r.ok){ if(r.zgoda) $("alZgoda").classList.add("show"); else alert(r.blad||"Nie udało się uruchomić lektora."); }
+});
+$("probka").onclick=()=>przycisk($("probka"),async()=>{
+  if(TEL&&profil==="iphone") A.wlacz();
+  if(!zmianaOk()) return;
+  const r=await api("/api/probka",{gra:graWidok, profil, urzadzenie:$("dev").value}); if(!r.ok) alert(r.blad||"Nie udało się zagrać próbki.");
+});
+$("demo").onclick=()=>przycisk($("demo"),async()=>{ if(TEL&&profil==="iphone") A.wlacz(); if(!zmianaOk()) return;
+  const r=await api("/api/start",{zrodlo:"demo", profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, gra:graWidok}); if(!r.ok) alert(r.blad); });
 $("qrZmien").onclick=()=>{ qrCo=qrCo==="local"?"ip":"local"; if(st&&st.pilot) renderPilot(st.pilot); };
 $("nowyKlucz").onclick=async()=>{ if(!confirm("Zrobić nowy kod? Pilot dodany do ekranu iPhone'a przestanie działać — trzeba będzie zeskanować nowy kod.")) return; await api("/api/nowy-klucz"); tick(); };
 $("telBtn").onclick=()=>A.wlacz();
@@ -323,7 +525,9 @@ if(!TEL) addEventListener("pagehide",()=>{ navigator.sendBeacon("/api/koniec?c="
 // ------------------------------------------------------------------ iPhone as the speaker (profile "iphone")
 // One AudioContext kept running (a silent loop, like the Mac's single stream); lines arrive by long-poll,
 // are fetched as Opus (or WAV when this phone cannot decode Opus) and played in order, stale ones skipped.
-const A={ctx:null,gain:null,fmt:Q.get("kodek"),od:-1,kolejka:[],gra:null,slucha:false,diag:null,wl:null,wideo:null,zdarzenia:[],
+// g = game session: a line of another game session is never played (line numbers are per pack); a new number
+// stops the current sound and empties the queue.
+const A={ctx:null,gain:null,fmt:Q.get("kodek"),od:-1,g:null,kolejka:[],gra:null,slucha:false,diag:null,wl:null,wideo:null,zdarzenia:[],
  STARY_MS:5000,
  ustawGlosnosc(v){ if(this.gain) this.gain.gain.value=v; },
  wlacz(){  // must run synchronously inside the tap
@@ -348,7 +552,7 @@ const A={ctx:null,gain:null,fmt:Q.get("kodek"),od:-1,kolejka:[],gra:null,slucha:
   try{
     const pr=await (await get("/api/telefon/probka")).json();
     for(const f of ["opus","wav"]){ const t=performance.now();
-      try{ const b=await (await get(`/api/telefon/dzwiek/${pr.idx}?f=${f}`)).arrayBuffer(); const ab=await this.dekoduj(b);
+      try{ const b=await (await get(`/api/telefon/dzwiek/${pr.idx}?f=${f}&g=${pr.g}`)).arrayBuffer(); const ab=await this.dekoduj(b);
         this.diag[f]={ok:true,ms:Math.round(performance.now()-t),s:+ab.duration.toFixed(2)}; }
       catch(e){ this.diag[f]={ok:false,blad:String(e&&e.message||e).slice(0,120)}; } }
   }catch(e){ this.diag.blad=String(e).slice(0,120); }
@@ -362,15 +566,18 @@ const A={ctx:null,gain:null,fmt:Q.get("kodek"),od:-1,kolejka:[],gra:null,slucha:
     try{
       const r=await (await get(z("/api/telefon/kwestie?od="+this.od+"&f="+this.fmt))).json(), odebrano=performance.now();
       if(!volDrag) this.ustawGlosnosc(r.glosnosc);
+      if(this.g!==null&&r.g!==this.g){ this.cisza(); this.zdarz("zmiana gry"); }  // the game changed: old lines are void
+      this.g=r.g;
       const pierwszy=this.od<0; this.od=r.nr; if(pierwszy) continue;
-      for(const e of r.zdarzenia){ if(e.typ==="stop") this.cisza(); else if(e.typ==="kwestia") this.pobierz(e,odebrano); }
+      for(const e of r.zdarzenia){ if(e.g!==this.g) continue;
+        if(e.typ==="stop"||e.typ==="zmiana_gry") this.cisza(); else if(e.typ==="kwestia") this.pobierz(e,odebrano); }
     }catch(e){ await new Promise(ok=>setTimeout(ok,1500)); }
   }
  },
  pobierz(e,odebrano){
   const t0=performance.now();
-  const job={e,odebrano,p:(async()=>{  // Opus arrives inside the long-poll answer; otherwise fetch the clip
-    const b=e.audio?Uint8Array.from(atob(e.audio),c=>c.charCodeAt(0)).buffer:await (await get(`/api/telefon/dzwiek/${e.idx}?f=${this.fmt}`)).arrayBuffer();
+  const job={e,odebrano,p:(async()=>{  // Opus arrives inside the long-poll answer; otherwise fetch the clip (of this game session)
+    const b=e.audio?Uint8Array.from(atob(e.audio),c=>c.charCodeAt(0)).buffer:await (await get(`/api/telefon/dzwiek/${e.idx}?f=${this.fmt}&g=${e.g}`)).arrayBuffer();
     const t1=performance.now(); const ab=await this.dekoduj(b); return {ab,pobranie:t1-t0,dekod:performance.now()-t1}; })()};
   job.p.catch(()=>{});
   this.kolejka.push(job);
@@ -384,6 +591,7 @@ const A={ctx:null,gain:null,fmt:Q.get("kodek"),od:-1,kolejka:[],gra:null,slucha:
   try{ r=await job.p; }catch(err){ this.zdarz("blad:"+String(err).slice(0,80)); if(this.kolejka[0]===job) this.kolejka.shift(); this.gra=null; return this.graj(); }
   if(this.kolejka[0]!==job||this.gra!==job){ if(this.gra===job) this.gra=null; return this.graj(); }  // skipped or stopped meanwhile
   this.kolejka.shift();
+  if(job.e.g!==this.g){ this.raport(job,"inna_gra"); this.gra=null; return this.graj(); }
   if(this.wiek(job)>this.STARY_MS||this.ctx.state!=="running"){ this.raport(job,this.ctx.state!=="running"?"uśpiony":"za_późno"); this.gra=null; return this.graj(); }
   const src=this.ctx.createBufferSource(); src.buffer=r.ab; src.connect(this.gain); job.src=src;
   src.onended=()=>{ if(this.gra===job){ this.gra=null; this.graj(); } };
@@ -428,6 +636,9 @@ document.addEventListener("visibilitychange",()=>{
   await tick();
   if(st){ const u=st.ustawienia; $("cam").value=u.kamera||0;
     setZrodlo(u.zrodlo==="kamera"?"kamera":"ekran"); setProfil(u.profil||"tv_mac",false); }
+  await wczytajKatalog();
+  const [w,id]=zHasha(), wyb=st&&(st.ustawienia.gra||(st.gra&&st.gra.id));
+  if(w) pokaz(w,id); else if(wyb) pokaz("gra",wyb); else pokaz("katalog");  // a chosen game opens straight on its screen
   await devices(false);
   setInterval(tick,1000);
 })();
