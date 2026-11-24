@@ -175,6 +175,8 @@ body:not(.tel) .telOnly{display:none!important}
 <div class="alert warn" id="alZgoda"><span>macOS musi pozwolić „GTA Lektor” widzieć ekran (napisy gry). Kliknij, zaznacz „GTA Lektor” na liście i uruchom panel jeszcze raz.</span><button class="btn small macOnly" onclick="api('/api/zgoda-ekranu')">Otwórz ustawienia</button></div>
 <div class="alert warn" id="alWarn"><span id="alWarnTxt"></span></div>
 <div class="alert bad" id="alSiec"><span>Nie mogę połączyć się z Makiem. Czy panel GTA Lektor na Macu jest otwarty, a telefon w tym samym Wi-Fi?</span></div>
+<!-- the reader can be stopped from every view (the game screen has its own Graj/Stop button) -->
+<div class="actions" id="stopBar" style="display:none"><button class="play stop" id="stopGlobal"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span id="stopTxt">Zatrzymaj lektora</span></button></div>
 
 <!-- ============================================================ catalogue -->
 <section class="widok" id="vKatalog">
@@ -328,12 +330,17 @@ const gra=id=>kat&&kat.gry.find(g=>g.id===id);
 
 // ------------------------------------------------------------------ views (catalogue → game → settings)
 function pokaz(w,id){
-  if(w==="gra"&&!id) w="katalog";
+  if(w==="gra"&&(!id||(kat&&!gra(id)))) w="katalog";  // a game not on disk (unplugged drive): the catalogue says why
   widok=w; if(w==="gra") graWidok=id;
   ["katalog","gra","ustawienia"].forEach(n=>$("v"+n[0].toUpperCase()+n.slice(1)).classList.toggle("on",n===w));
   $("navKatalog").classList.toggle("on",w==="katalog"); $("navUst").classList.toggle("on",w==="ustawienia"); $("navGra").classList.toggle("on",w==="gra");
   const h=w==="gra"?"#gra="+encodeURIComponent(id):"#"+w; if(location.hash!==h) history.replaceState(null,"",location.pathname+location.search+h);
-  renderGra(); motyw(); scrollTo(0,0);
+  renderGra(); motyw(); pasekStop(); scrollTo(0,0);
+}
+function pasekStop(){  // Stop from every view while reading (the game screen has its own button)
+  if(!st) return; const nazwa=st.gra&&st.gra.nazwa;
+  $("stopBar").style.display=st.dziala&&widok!=="gra"?"":"none";
+  $("stopTxt").textContent=(st.zrodlo==="probka"?"Zatrzymaj próbkę":"Zatrzymaj lektora")+(nazwa?" · "+nazwa:"");
 }
 function zHasha(){ const h=decodeURIComponent(location.hash.slice(1)); if(h.startsWith("gra=")) return ["gra",h.slice(4)]; return [["katalog","ustawienia"].includes(h)?h:null]; }
 $("navKatalog").onclick=()=>pokaz("katalog"); $("navUst").onclick=()=>pokaz("ustawienia"); $("navGra").onclick=()=>pokaz("gra",graWidok);
@@ -371,7 +378,8 @@ function renderKatalog(){
 }
 async function wczytajKatalog(nr){  // the catalogue number is taken only after a good answer: a failure is retried
   try{ const r=await get("/api/katalog"); if(!r.ok) throw new Error("HTTP "+r.status);
-    kat=await r.json(); if(nr!=null) katNr=nr; renderKatalog(); renderGra(); motyw(); }
+    kat=await r.json(); if(nr!=null) katNr=nr; renderKatalog();
+    if(widok==="gra"&&!gra(graWidok)) pokaz("katalog"); else { renderGra(); motyw(); } }
   catch(e){ if(kat) return;  // keep the last good list; with none, say so — a failure never looks like an empty catalogue
     kat={stan:"blad_pobrania",komunikat:"Nie mogę pobrać listy gier z Maca ("+(e.message||e)+"). Ponawiam za chwilę.",gry:[]}; renderKatalog(); }
 }
@@ -462,6 +470,7 @@ function render(){
   if(st.pilot) renderPilot(st.pilot);
   if(TEL) renderTel();
   if(st.katalog_nr!==katNr||(kat&&kat.stan==="blad_pobrania")) wczytajKatalog(st.katalog_nr); else renderKatalog();
+  pasekStop();
   renderGra(); if(Date.now()-wygladTouched>3000) motyw();
 }
 function renderPilot(p){
@@ -510,6 +519,7 @@ $("play").onclick=()=>przycisk($("play"),async()=>{
   const r=await api("/api/start",{zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value, gra:graWidok});
   if(!r.ok){ if(r.zgoda) $("alZgoda").classList.add("show"); else alert(r.blad||"Nie udało się uruchomić lektora."); }
 });
+$("stopGlobal").onclick=()=>przycisk($("stopGlobal"),async()=>{ const r=await api("/api/stop"); if(r.ok===false) alert(r.blad); });
 $("probka").onclick=()=>przycisk($("probka"),async()=>{
   if(TEL&&profil==="iphone") A.wlacz();
   if(!zmianaOk()) return;

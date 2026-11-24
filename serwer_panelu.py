@@ -614,7 +614,7 @@ class Stan:
         if not ID_GRY.fullmatch(str(g)) or self.katalog.wpis(g) is None:
             return {"ok": False, "blad": "Nie widzę tej gry w folderze paczek — odśwież katalog."}
         if not self._stop():
-            return {"ok": False, "blad": "Lektor nie zatrzymał się — gry nie zmieniam. Spróbuj jeszcze raz."}
+            return {"ok": False, "blad": "Lektor nie zatrzymał się — gry nie zmieniam. Spróbuj jeszcze raz; jeśli to się powtarza, zamknij panel i otwórz go ponownie."}
         ok, blad = self._wczytaj(g)
         if not ok:
             return {"ok": False, "blad": blad}
@@ -817,7 +817,7 @@ class Stan:
                 if not zmiana["ok"]:
                     return zmiana
             elif not self._stop():  # a reader that did not end must not get a second one next to it
-                return {"ok": False, "blad": "Poprzedni lektor nie zatrzymał się (wyciszyłem go) — spróbuj za chwilę."}
+                return {"ok": False, "blad": "Poprzedni lektor nie zatrzymał się (wyciszyłem go) — spróbuj za chwilę; jeśli to się powtarza, zamknij panel i otwórz go ponownie."}
             return self._start(zrodlo, profil, urzadzenie, glosnosc, kamera, otworz_xbox)
         finally:
             self.sterowanie.release()
@@ -944,7 +944,7 @@ class Stan:
                 if not zmiana["ok"]:
                     return zmiana
             elif not self._stop():
-                return {"ok": False, "blad": "Lektor nie zatrzymał się — spróbuj jeszcze raz."}
+                return {"ok": False, "blad": "Lektor nie zatrzymał się — spróbuj jeszcze raz; jeśli to się powtarza, zamknij panel i otwórz go ponownie."}
             with self.lock:
                 p = self.p
                 if p is None:
@@ -1022,7 +1022,7 @@ class Stan:
         if not self.sterowanie.acquire(timeout=15 if czekaj else -1, blocking=czekaj):
             return {"ok": False, "blad": ZAJETY}
         try:
-            return {"ok": True} if self._stop() else {"ok": False, "blad": "Lektor nie zatrzymał się w 5 s — wyciszyłem go."}
+            return {"ok": True} if self._stop() else {"ok": False, "blad": "Lektor nie zatrzymał się w 5 s — wyciszyłem go. Jeśli to się powtarza, zamknij panel i otwórz go ponownie."}
         finally:
             self.sterowanie.release()
 
