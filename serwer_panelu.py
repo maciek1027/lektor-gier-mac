@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GTA Lektor — panel server (port 8797): the Mac panel on 127.0.0.1 and an iPhone remote over home Wi-Fi.
+"""Lektor gier (dawniej GTA Lektor) — panel server (port 8797): the Mac panel on 127.0.0.1 and an iPhone remote over home Wi-Fi.
 
 Serves panel/index.html and a small JSON API that drives lektor.py: the game catalogue (voice packs in the packs
 folder), start/stop the reader, a short sample of a game, live volume, output device, Chrome with Xbox Remote Play,
@@ -72,6 +72,7 @@ ALIASY = {"/apple-touch-icon.png": "ikona-180.png", "/apple-touch-icon-precompos
           "/favicon.ico": "ikona-192.png"}
 TYPY = {"jpg": "image/jpeg", "png": "image/png", "mp4": "video/mp4"}
 STARY_S = 6  # a phone line older than this is not worth waiting for
+KOPIA_S = 60  # an unreadable pack changed less than this ago is still being copied, not broken
 ZAJETY = "Lektor właśnie się przełącza (zmiana gry, start albo stop) — spróbuj za chwilę."
 
 
@@ -237,6 +238,7 @@ STANY = {  # tile state -> short label (the panel shows the longer explanation f
     "nie_na_macu": "Na razie nie na Macu",
     "wczytuje": "Wczytuję…",
     "blad": "Błąd paczki",
+    "kopiuje": "Kopiuję…",  # a fresh file that is not a whole zip yet (Finder copy / download under the final name)
     "nie_na_dysku": "W bibliotece — nie na dysku",  # E1c (download) fills this one; the panel already draws it
 }
 
@@ -254,7 +256,7 @@ class Katalog:
         self.folder, self.pamiec, self.plik_dowodow = folder, pamiec, sprawdzone
         self.lock = threading.Lock()
         self.skanuje = threading.Lock()
-        self.stan, self.komunikat = "skanuje", "Sprawdzam folder paczek…"
+        self.stan, self.komunikat = "skanuje", "Sprawdzam folder gier…"
         self.gry = {}  # id -> entry (with "plik" and "okladka_plik", which never leave the server)
         self.nr = 0  # bumped when anything visible changes: the panel refetches the catalogue
         self.odcisk = None
@@ -274,9 +276,9 @@ class Katalog:
             return "brak_dysku", (f"Nie widzę dysku „{czesci[2]}” z paczkami lektora. Podłącz dysk — katalog "
                                   f"pokaże gry sam (albo kliknij „Sprawdź ponownie”).")
         if not os.path.exists(self.folder):
-            return "brak_folderu", (f"Nie ma folderu paczek ({self.folder}). Utwórz go i wrzuć do niego paczkę .zip "
+            return "brak_folderu", (f"Nie ma folderu gier ({self.folder}). Utwórz go i wrzuć do niego paczkę .zip "
                                     f"z gamereader.pl albo wskaż inny folder (LEKTOR_PACZKI w lokalne.env).")
-        return "blad", (f"Nie mogę odczytać folderu paczek ({blad}). Sprawdź, czy dysk działa i czy program ma "
+        return "blad", (f"Nie mogę odczytać folderu gier ({blad}). Sprawdź, czy dysk działa i czy program ma "
                         f"dostęp do tego folderu, potem kliknij „Sprawdź ponownie”.")
 
     def dowody(self):
@@ -301,8 +303,8 @@ class Katalog:
                 return self._ustaw(*self._brak_folderu(e), gry={})
             if not nazwy:
                 self.odcisk = ()
-                return self._ustaw("pusty", ("W folderze paczek nie ma jeszcze żadnej gry. Pobierz paczkę lektora "
-                                             "z gamereader.pl i wrzuć plik .zip do folderu paczek."), gry={})
+                return self._ustaw("pusty", ("W folderze gier nie ma jeszcze żadnej gry. Pobierz paczkę lektora "
+                                             "z gamereader.pl i wrzuć plik .zip do folderu gier."), gry={})
             mp4 = self._filmy()
             try:
                 dowody_t = os.stat(self.plik_dowodow).st_mtime_ns
@@ -326,11 +328,12 @@ class Katalog:
             self._ustaw("ok", None, gry=dict(gry))
             for n in nazwy:
                 wpis = self._wpis(os.path.join(self.folder, n), staty[n], ids[n])
-                self._stan_kafelka(wpis, dowody)
+                self._stan_kafelka(wpis, dowody, staty[n].st_mtime)
                 wpis["demo_plik"] = self._demo(n, wpis, mp4)
                 gry[ids[n]] = wpis
                 self._ustaw("ok", None, gry=dict(gry))
-            self.odcisk = odcisk
+            # a file still being copied: look again on the next pass even if it stops growing (then it is broken)
+            self.odcisk = None if any(w.get("stan") == "kopiuje" for w in gry.values()) else odcisk
         finally:
             self.skanuje.release()
 
@@ -427,12 +430,17 @@ class Katalog:
         return wpis
 
     @staticmethod
-    def _stan_kafelka(w, dowody):
+    def _stan_kafelka(w, dowody, mtime=0):
         """Tile state. Decides: a test record of this pack version (live on the Xbox / on a game recording), then the
         pack fields the reader does not apply that can lose lines (czytanie). Not the bare list of unhandled fields:
         GTA VI has two and reads the demo 14/14."""
         if w.get("blad"):
-            w.update(stan="blad", stan_opis=w["blad"])
+            if 0 <= time.time() - mtime < KOPIA_S:  # dragging a 3 GB pack in Finder writes it under its final name
+                # (a date in the future is not "being copied": it would wait forever and rescan every pass)
+                w.update(stan="kopiuje", stan_opis="Plik paczki jeszcze się kopiuje — gra będzie gotowa, gdy kopiowanie "
+                                                   "się skończy (sprawdzam co 5 s).")
+            else:
+                w.update(stan="blad", stan_opis=w["blad"])
             return
         if not w.get("obszar"):
             w.update(stan="nie_na_macu", stan_opis="Paczka nie ma obszaru napisów (presetu) — ten czytnik nie wie, "
@@ -523,6 +531,8 @@ class Stan:
         self.start_t = time.time()
         self.klienci = {}  # id -> {"t": last poll, "tel": from the network, "ip"}
         self.zamknij_o = None
+        # "Wyłącz program" (panel button): unlike zamknij_o, a poll of an open window or phone never cancels it
+        self.wylacz = False
         # events for phones (profile "iphone"): cursor-based so a reconnecting phone misses nothing
         self.cv = threading.Condition()
         self.zdarzenia = collections.deque(maxlen=50)
@@ -580,7 +590,7 @@ class Stan:
         if w is None:
             kat = self.katalog.publiczne()
             blad = kat["komunikat"] if kat["stan"] != "ok" else (
-                "Nie widzę paczki wybranej gry w folderze paczek — podłącz dysk albo wybierz grę w katalogu.")
+                "Nie widzę paczki wybranej gry w folderze gier — podłącz dysk albo wybierz grę w katalogu.")
         elif w.get("stan") == "nie_na_macu":
             blad = f"{w.get('nazwa')}: {w.get('stan_opis')}"
         else:
@@ -612,7 +622,7 @@ class Stan:
     def _zmien_gre(self, g):
         """Caller holds self.sterowanie. The reader must be CONFIRMED stopped before the pack is swapped."""
         if not ID_GRY.fullmatch(str(g)) or self.katalog.wpis(g) is None:
-            return {"ok": False, "blad": "Nie widzę tej gry w folderze paczek — odśwież katalog."}
+            return {"ok": False, "blad": "Nie widzę tej gry w folderze gier — odśwież katalog."}
         if not self._stop():
             return {"ok": False, "blad": "Lektor nie zatrzymał się — gry nie zmieniam. Spróbuj jeszcze raz; jeśli to się powtarza, zamknij panel i otwórz go ponownie."}
         ok, blad = self._wczytaj(g)
@@ -680,6 +690,12 @@ class Stan:
                 if t - k["t"] > LIMIT[("tel" if k["tel"] else "mac", czyta)]:
                     del self.klienci[cid]
             return dict(self.klienci)
+
+    def wylacz_program(self):
+        """The user pressed "Wyłącz program": the watchdog stops the reader and ends the server within ~1 s."""
+        with self.lock:
+            self.wylacz = True
+        self.info("Wyłączam program (przycisk w panelu)…")
 
     def koniec(self, cid):
         """A Mac panel window closed. Shut down only when no other client (another window, a phone) is left."""
@@ -862,8 +878,8 @@ class Stan:
             if not Quartz.CGPreflightScreenCaptureAccess():
                 Quartz.CGRequestScreenCaptureAccess()
                 return {"ok": False, "zgoda": True,
-                        "blad": "macOS potrzebuje zgody na nagrywanie ekranu dla „GTA Lektor”. Zezwól w okienku "
-                                "systemu albo w Ustawieniach, potem uruchom panel ponownie."}
+                        "blad": "macOS potrzebuje zgody na nagrywanie ekranu dla „Terminal” (to on uruchamia lektora). "
+                                "Zezwól w okienku systemu albo w Ustawieniach, potem otwórz program ponownie."}
             src = L.ZrodloEkran(frac)
             if otworz_xbox:
                 subprocess.Popen(["open", "-a", "Google Chrome", XBOX])
@@ -877,7 +893,7 @@ class Stan:
             demo = w.get("demo_plik")
             if not demo or not os.path.exists(demo):
                 return {"ok": False, "blad": "Ta gra nie ma nagrania demo — wrzuć krótki film z napisami tej gry "
-                                             "(.mp4, nazwany jak paczka) do folderu paczek."}
+                                             "(.mp4, nazwany jak paczka) do folderu gier."}
             src = L.ZrodloWideo(demo, frac)
         try:
             glos = self._glos(p, profil, urzadzenie)
@@ -1060,6 +1076,7 @@ class Stan:
                 "paczka": (self.p.manifest.get("name") if self.p else None),
                 "gra": {"id": self.gra, "nazwa": w.get("nazwa") if w else None} if self.gra else None,
                 "sesja_gry": self.sesja_gry, "katalog_nr": self.katalog.nr, "alarm": self.alarm,
+                "wylacz": self.wylacz,  # every open window and phone shows "Program wyłączony", not a lost connection
                 "dziala": s is not None, "zrodlo": s["zrodlo"] if s else None, "profil": s["profil"] if s else None,
                 "od": int(time.time() - s["start"]) if s else 0,
                 "kwestie": list(self.kwestie), "ostrzezenie": ostrz if s else None,
@@ -1175,9 +1192,9 @@ class Obsluga(BaseHTTPRequestHandler):
             return self._wyslij(200, html, "text/html; charset=utf-8")
         if sciezka == "/manifest.json":
             return self._wyslij(200, {
-                "name": "GTA Lektor", "short_name": "Lektor", "lang": "pl", "display": "standalone",
+                "name": "Lektor Gier na konsoli", "short_name": "Lektor", "lang": "pl", "display": "standalone",
                 "start_url": f"/telefon?k={STAN.klucz}", "scope": "/", "id": "/telefon",
-                "background_color": "#140a2c", "theme_color": "#140a2c",
+                "background_color": "#121318", "theme_color": "#121318",
                 "icons": [{"src": f"/ikona-{r}.png", "sizes": f"{r}x{r}", "type": "image/png"} for r in (192, 512)],
             }, "application/manifest+json; charset=utf-8")
         if PUBLICZNE.fullmatch(sciezka):
@@ -1281,6 +1298,9 @@ class Obsluga(BaseHTTPRequestHandler):
                             pass
                 STAN.zapisz_ustawienia()
             return self._wyslij(200, {"ok": True})
+        if sciezka == "/api/wylacz":  # behind the pilot key from the network (_wejscie) and the X-Lektor header
+            STAN.wylacz_program()
+            return self._wyslij(200, {"ok": True})
         if sciezka == "/api/xbox":
             subprocess.Popen(["open", "-a", "Google Chrome", XBOX])
             return self._wyslij(200, {"ok": True})
@@ -1322,10 +1342,12 @@ def straznik(serwer):
         if n % 5 == 0:
             STAN.pilnuj()
         with STAN.lock:
-            zamknij_o = STAN.zamknij_o
+            zamknij_o, wylacz = STAN.zamknij_o, STAN.wylacz
         nikt = not STAN.obecni() and time.time() - STAN.start_t > LIMIT[("mac", False)]
-        if (zamknij_o and time.time() > zamknij_o) or nikt:
-            STAN.info("Panel zamknięty — kończę lektora.")
+        if wylacz or (zamknij_o and time.time() > zamknij_o) or nikt:
+            STAN.info("Program wyłączony przyciskiem — kończę lektora." if wylacz else "Panel zamknięty — kończę lektora.")
+            if wylacz:
+                time.sleep(1.5)  # the other windows and phones poll every second: let them read "wylacz" first
             STAN.stop(czekaj=True)
             serwer.shutdown()
             return
@@ -1349,7 +1371,7 @@ def main():
     STAN = Stan()
     STAN.uruchom()
     threading.Thread(target=straznik, args=(serwer,), daemon=True).start()
-    STAN.info(f"Panel GTA Lektor: http://127.0.0.1:{PORT}/ · pilot w sieci: {STAN.bonjour or adres_ip()}:{PORT}")
+    STAN.info(f"Panel lektora gier: http://127.0.0.1:{PORT}/ · pilot w sieci: {STAN.bonjour or adres_ip()}:{PORT}")
     serwer.serve_forever()
 
 

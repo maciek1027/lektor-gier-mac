@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lektor GTA — Polish voice-over from GameReader 2.0 voice packs, on macOS.
+"""Lektor gier (formerly "Lektor GTA") — Polish voice-over from GameReader 2.0 voice packs, on macOS.
 
 Pipeline: game picture (capture card / screen / recording) -> subtitle region -> macOS Vision OCR
 (pl-PL) -> fuzzy match against the pack's subtitles.json -> play the matching audio/<id>.opus.
@@ -730,7 +730,7 @@ def main():
     if a.wideo and a.pokaz and not a.szybko:
         try:  # muted video window so the demo can be watched; timing restarts with it
             subprocess.Popen(["ffplay", "-loglevel", "quiet", "-an", "-autoexit", "-x", "960", "-y", "540",
-                              "-window_title", "GTA VI - nagranie testowe", a.wideo])
+                              "-window_title", f"{p.manifest.get('name') or 'Gra'} - nagranie testowe", a.wideo])
             src.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
             src.klatek, src.pozycja, src.t0 = 0, 0.0, None
             time.sleep(0.4)

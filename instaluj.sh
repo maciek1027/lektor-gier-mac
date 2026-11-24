@@ -1,9 +1,10 @@
 #!/bin/bash
-# GTA Lektor — one-time setup: Python environment (.venv), packages, the "GTA Lektor" app in /Applications.
+# Lektor gier — one-time setup: Python environment (.venv), packages, the app in /Applications (still named "GTA Lektor":
+# the Dock icon and the scripts point at that name).
 # Run in Terminal from this folder:  ./instaluj.sh
 set -u
 cd "$(dirname "$0")" || exit 1
-echo "== GTA Lektor: instalacja =="
+echo "== Lektor gier: instalacja =="
 [ "$(uname)" = "Darwin" ] || { echo "To narzędzie działa tylko na macOS."; exit 1; }
 
 # 1. Python 3.10+ (Homebrew first; the system /usr/bin/python3 is often too old)
@@ -40,9 +41,9 @@ if ls paczki/*.zip >/dev/null 2>&1; then
   echo "Paczka lektora: $(ls paczki/*.zip | head -1)"
 else
   echo
-  echo ">> Brakuje paczki lektora. Pobierz paczkę GTA VI z https://gamereader.pl"
-  echo "   i wrzuć plik .zip do folderu: $(pwd)/paczki"
+  echo ">> Nie masz jeszcze żadnej gry. Pobierz paczkę lektora swojej gry (GameReader 2.0) z https://gamereader.pl"
+  echo "   i wrzuć plik .zip do folderu gier: $(pwd)/paczki — gra pojawi się w panelu sama."
   open paczki 2>/dev/null
 fi
 echo
-echo "Gotowe. Uruchom „GTA Lektor” z Aplikacji (albo Launchpada). Pierwsze uruchomienie: zobacz README → „Pozwolenia macOS”."
+echo "Gotowe. Uruchom lektora ikonką „GTA Lektor” w Aplikacjach (albo Launchpadzie). Pierwsze uruchomienie: zobacz README → „Pozwolenia macOS”."

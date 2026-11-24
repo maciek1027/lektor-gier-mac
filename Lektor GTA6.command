@@ -1,5 +1,5 @@
 #!/bin/bash
-# Double-click launcher for the GTA VI Polish voice-over reader (opens in Terminal).
+# Double-click launcher for the Polish game voice-over reader (opens in Terminal; old menu, the panel app is the main way).
 cd "$(dirname "$0")" || exit 1
 PY="./.venv/bin/python"
 # the GameReader 2.0 voice pack and the optional demo video: the reader picks them (LEKTOR_PACZKA / LEKTOR_DEMO,
@@ -13,7 +13,7 @@ if [ ! -f "$PACZKA" ]; then
   exit 1
 fi
 
-echo "=== Polski lektor GTA VI ==="
+echo "=== Lektor gier — menu w Terminalu ==="
 echo " 1) Gra zdalna — obraz gry na ekranie Maca (okno gry na PEŁNYM ekranie)"
 echo " 2) Karta przechwytująca"
 echo " 3) Demo na nagraniu — usłyszysz lektora od razu"
@@ -33,7 +33,7 @@ case "$W" in
     caffeinate -d -i "$PY" lektor.py --paczka "$PACZKA" --kamera "$K"
     ;;
   3)
-    [ -f "$DEMO" ] || { echo "Brak nagrania demo — wrzuć film .mp4 z napisami GTA VI do folderu paczki/."; read -r -p "Enter zamyka okno."; exit 1; }
+    [ -f "$DEMO" ] || { echo "Brak nagrania demo — wrzuć film .mp4 z napisami gry do folderu gier (paczki/)."; read -r -p "Enter zamyka okno."; exit 1; }
     "$PY" lektor.py --paczka "$PACZKA" --wideo "$DEMO" --pokaz
     ;;
   4)

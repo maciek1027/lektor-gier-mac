@@ -7,7 +7,8 @@ What is covered: an old settings file starts on GTA VI with the same pilot key �
 stop / sample / reload) refuses instead of queueing · a game change answers a waiting long-poll at once and the phone
 gets no line and no clip of the old game · missing disk ≠ empty folder ≠ broken pack · tile states from test
 records, not from the bare list of unhandled fields · cover theme contrast ≥ 4.5:1 · new routes need the pilot key
-from the network · temporary folders of the reader are removed on close.
+from the network · temporary folders of the reader are removed on close · "Wyłącz program" ends the server process
+even while a panel window keeps polling.
 Optional checks on the real packs run only when LEKTOR_TEST_PACZKI points at a folder with them.
 """
 import http.client
@@ -15,6 +16,8 @@ import importlib.util
 import io
 import json
 import os
+import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -410,10 +413,47 @@ class TestKatalog(unittest.TestCase):
             fh.write(b"to nie jest zip")
         with zipfile.ZipFile(os.path.join(f, "bez-napisow.zip"), "w") as z:
             z.writestr("manifest.json", "{}")
+        stary = time.time() - 3600  # not touched for an hour: broken, not still being copied
+        for n in ("zepsuta.zip", "bez-napisow.zip"):
+            os.utime(os.path.join(f, n), (stary, stary))
         gry = {g["id"]: g for g in self.kat(f).publiczne()["gry"]}
         for i in ("zepsuta", "bez-napisow"):
             self.assertEqual(gry[i]["stan"], "blad", i)
             self.assertIn("uszkodzona", gry[i]["stan_opis"])
+
+    def test_paczka_w_trakcie_kopiowania_to_nie_blad(self):
+        """Finder writes a dragged 3 GB pack under its final name: half a zip right now = "Kopiuję…", not "broken,
+        download again"; when the file stops changing it is judged again without any new change in the folder."""
+        f = nowy_katalog("kopiowanie")
+        cala = zrob_paczke(nowy_katalog("zrodlo"), "gra.zip", "Gra kopiowana")
+        with open(cala, "rb") as fh:
+            dane = fh.read()
+        with open(os.path.join(f, "gra.zip"), "wb") as fh:
+            fh.write(dane[:len(dane) // 2])  # the copy is half way
+        kat = self.kat(f)
+        g = kat.publiczne()["gry"][0]
+        self.assertEqual((g["stan"], g["stan_nazwa"]), ("kopiuje", "Kopiuję…"))
+        self.assertNotIn("Pobierz", g["stan_opis"])
+        stare = S.KOPIA_S
+        S.KOPIA_S = 0  # the same unchanged file a long time later
+        try:
+            kat.skanuj()
+        finally:
+            S.KOPIA_S = stare
+        self.assertEqual(kat.publiczne()["gry"][0]["stan"], "blad")
+        with open(os.path.join(f, "gra.zip"), "wb") as fh:  # the copy finished
+            fh.write(dane)
+        kat.skanuj()
+        self.assertEqual(kat.publiczne()["gry"][0]["nazwa"], "Gra kopiowana")
+        self.assertNotIn(kat.publiczne()["gry"][0]["stan"], ("blad", "kopiuje"))
+
+    def test_uszkodzona_z_data_z_przyszlosci_to_blad_nie_kopiowanie(self):  # review r2: it would wait forever
+        f = nowy_katalog("przyszlosc")
+        with open(os.path.join(f, "zla.zip"), "wb") as fh:
+            fh.write(b"to nie jest zip")
+        jutro = time.time() + 86400
+        os.utime(os.path.join(f, "zla.zip"), (jutro, jutro))
+        self.assertEqual(self.kat(f).publiczne()["gry"][0]["stan"], "blad")
 
     def test_stany_kafelkow_z_dowodu_proby_nie_z_samej_listy_pol(self):
         f = nowy_katalog("stany")
@@ -501,7 +541,7 @@ class TestTrasy(unittest.TestCase):
         cls.srv.zamknij()
 
     NOWE = (("GET", "/api/katalog"), ("GET", "/api/okladka/aaa"), ("POST", "/api/probka"), ("POST", "/api/paczka"),
-            ("POST", "/api/stop"), ("POST", "/api/start"))
+            ("POST", "/api/stop"), ("POST", "/api/start"), ("POST", "/api/wylacz"))
 
     def test_nowe_trasy_z_sieci_bez_klucza_403(self):
         for metoda, sciezka in self.NOWE:
@@ -532,6 +572,81 @@ class TestTrasy(unittest.TestCase):
         _, kat = self.srv.json("GET", "/api/katalog")
         self.assertEqual((kat["stan"], [g["id"] for g in kat["gry"]], kat["wybrana"]), ("ok", ["aaa"], "aaa"))
         self.assertNotIn("plik", kat["gry"][0])  # disk paths never leave the server
+
+
+class TestWylacz(unittest.TestCase):
+    """The "Wyłącz program" button: the real server program (main) in a child process, a panel window polling it."""
+
+    def test_bez_naglowka_strony_odmowa(self):  # another web page cannot switch the program off (no X-Lektor header)
+        k = nowy_katalog("wyl-naglowek")
+        st = stan(k, os.path.join(k, "paczki"), ustawienia=zapisz_ustawienia(k, {"klucz": KLUCZ}))
+        srv = _Serwer(st)
+        try:
+            c = http.client.HTTPConnection("::1", srv.port, timeout=10)
+            c.request("POST", "/api/wylacz", body="{}", headers={"Host": f"127.0.0.1:{srv.port}"})
+            self.assertEqual(c.getresponse().status, 403)
+            c.close()
+            self.assertFalse(st.wylacz)
+        finally:
+            srv.zamknij()
+
+    def test_program_konczy_sie_mimo_otwartego_panelu(self):
+        k = nowy_katalog("wylacz")
+        with socket.socket(socket.AF_INET6) as s:
+            s.bind(("::1", 0))
+            port = s.getsockname()[1]
+        klucz = "losowy" + os.urandom(12).hex()  # the child listens on every interface: never the public test key
+        env = dict(os.environ, LEKTOR_PORT=str(port), LEKTOR_USTAWIENIA=zapisz_ustawienia(k, {"klucz": klucz}),
+                   LEKTOR_PACZKI=os.path.join(k, "paczki"), LEKTOR_PAMIEC=os.path.join(k, "pamiec"),
+                   LEKTOR_PACZKA="", LEKTOR_DEMO="")
+        proc = subprocess.Popen([sys.executable, os.path.join(KOD, "serwer_panelu.py")], cwd=k, env=env,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        stop, widzial = threading.Event(), []
+
+        def zapytaj(metoda, sciezka):
+            c = http.client.HTTPConnection("::1", port, timeout=5)
+            c.request(metoda, sciezka, body="{}" if metoda == "POST" else None,
+                      headers={"Host": f"127.0.0.1:{port}", "X-Lektor": "1", "Content-Type": "application/json"})
+            r = c.getresponse()
+            dane = r.read()
+            c.close()
+            return r.status, dane
+
+        def panel():  # an open Mac panel window: polls every 0.2 s (a poll cancels the window-close shutdown)
+            while not stop.is_set():
+                try:
+                    kod, dane = zapytaj("GET", "/api/stan?c=oknoTestowe")
+                    if kod == 200 and json.loads(dane).get("wylacz"):
+                        widzial.append(True)
+                except (OSError, ValueError):
+                    pass
+                time.sleep(0.2)
+        try:
+            koniec = time.time() + 20
+            while time.time() < koniec:
+                try:
+                    if zapytaj("GET", "/api/stan?c=oknoTestowe")[0] == 200:
+                        break
+                except OSError:
+                    time.sleep(0.2)
+            else:
+                self.fail("the server did not start in 20 s")
+            threading.Thread(target=panel, daemon=True).start()
+            time.sleep(1.5)
+            self.assertIsNone(proc.poll(), "the server must keep running while a panel polls")
+            kod, dane = zapytaj("POST", "/api/wylacz")
+            self.assertEqual((kod, json.loads(dane)), (200, {"ok": True}))
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                self.fail("the program did not end within 10 s of Wyłącz program (a panel was polling)")
+            self.assertEqual(proc.returncode, 0, "a clean shutdown, not a crash")
+            self.assertTrue(widzial, "another open window must read 'wylacz' before the server is gone")
+        finally:
+            stop.set()
+            if proc.poll() is None:
+                proc.kill()
+                proc.wait()
 
 
 class TestSprzatanie(unittest.TestCase):

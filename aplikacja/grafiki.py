@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
-"""Generates the panel artwork via kie.ai (Nano Banana 2.1 by default, GPT Image as an option).
+"""Generates the panel artwork (the four "Jak słuchasz?" pictures) via kie.ai (Nano Banana 2.1 by default, GPT Image
+as an option).
 
 Optional: the art is already in panel/grafiki/. Needs your own kie.ai key in KIE_API_KEY (never printed).
 Usage:
-  grafiki.py --saldo                    # credit balance only
-  grafiki.py [--silnik nb|gpt] [nazwa…] # render all (or the named) images into ../panel/grafiki/
+  grafiki.py --saldo                                        # credit balance only
+  grafiki.py [--silnik nb|gpt] [--styl S] [--cel DIR] [nazwa…]  # render all (or the named) images as PNG
+Default target: ../panel/grafiki/ (the panel uses JPEG copies named <nazwa>.jpg).
 """
 import argparse
 import json
@@ -17,33 +19,37 @@ import urllib.request
 BAZA = "https://api.kie.ai/api/v1"
 CEL = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "panel", "grafiki")
 
-STYL = ("Original artwork, no text, no letters, no logos, no brand names, no real products, no people. "
-        "Synthwave dusk palette: deep night purple, magenta, hot pink and warm orange sunset glow, "
-        "soft neon rim light, clean modern 3D illustration with gentle gradients, high detail. ")
-OBIEKT = ("Single centered object on a plain smooth deep purple (#22104a) background with a faint magenta glow "
-          "behind it, generous empty margin around the object, soft shadow under it. ")
+# Neutral "game catalogue" look (E1d, 2026-11-25): calm and generic, not tied to any one game — the older synthwave
+# sunset art looked like one specific game. Three candidate styles; the chosen one is the default.
+STYLE = {
+    "plaski": ("Original artwork, no text, no letters, no logos, no brand names, no real products, no people. "
+               "Clean flat vector illustration, simple geometric shapes, subtle soft gradients, muted graphite and "
+               "slate greys with a single calm teal accent, gentle long soft shadow, modern app-icon quality. "),
+    "glina": ("Original artwork, no text, no letters, no logos, no brand names, no real products, no people. "
+              "Soft matte 3D clay render, rounded friendly shapes, muted warm grey and slate colours with a single "
+              "calm teal accent, soft studio lighting, subtle ambient occlusion, minimal and tidy. "),
+    "kontur": ("Original artwork, no text, no letters, no logos, no brand names, no real products, no people. "
+               "Minimal isometric line illustration, even off-white strokes, a few flat fills in slate grey and a "
+               "single calm teal accent, precise and tidy, like a premium app onboarding icon. "),
+}
+STYL_DOMYSLNY = "plaski"
+OBIEKT = ("Single centered object group on a plain smooth dark slate (#1d2028) background, generous empty margin "
+          "around it, soft shadow under it, no glow, no neon. ")
 
 OBRAZY = {
-    "tlo": ("16:9", "2K",
-            "Wide cinematic background for a game companion app: a tropical coastal city at dusk seen from a beach, "
-            "silhouetted palm trees, low pink and orange sun on the ocean horizon, distant neon-lit skyline, "
-            "calm water reflections, light haze. The left and center of the frame are darker and calm "
-            "(room for interface cards), detail concentrated at the right and bottom edges. " + STYL),
     "profil_tv_mac": ("1:1", "1K",
-            "A modern flat TV on a low stand showing an abstract colorful sunset game scene, a wireless game "
-            "controller in front of it, and a silver laptop on the right with small glowing sound wave arcs "
-            "coming from its speakers. " + OBIEKT + STYL),
+            "A modern flat TV on a low stand showing a simple abstract landscape, a wireless game controller in "
+            "front of it, and a silver laptop on the right with small sound wave arcs coming from its speakers. "),
     "profil_tv_glosnik": ("1:1", "1K",
-            "A modern flat TV on a low stand showing an abstract colorful sunset game scene, a wireless game "
-            "controller in front of it, and a small cylindrical portable wireless speaker on the right with "
-            "glowing sound wave arcs around it. " + OBIEKT + STYL),
+            "A modern flat TV on a low stand showing a simple abstract landscape, a wireless game controller in "
+            "front of it, and a small cylindrical portable wireless speaker on the right with sound wave arcs "
+            "around it. "),
     "profil_sluchawki": ("1:1", "1K",
-            "Over-ear wireless headphones resting next to a wireless game controller, glowing sound wave arcs "
-            "around the ear cups, a tiny abstract sunset reflected on the headband. " + OBIEKT + STYL),
+            "Over-ear wireless headphones resting next to a wireless game controller, small sound wave arcs "
+            "around the ear cups. "),
     "profil_iphone": ("1:1", "1K",
-            "A modern smartphone standing upright on a small stand, its screen showing an abstract colorful sunset "
-            "and a large glowing round play button, glowing sound wave arcs coming from its bottom speaker, "
-            "a wireless game controller lying in front of it. " + OBIEKT + STYL),
+            "A modern smartphone standing upright on a small stand, its screen showing a large round play button, "
+            "sound wave arcs coming from its bottom speaker, a wireless game controller lying in front of it. "),
 }
 
 MODEL = {"nb": "nano-banana-2-1", "gpt": "gpt-image-2-text-to-image"}
@@ -71,8 +77,9 @@ def saldo(k):
     return d.get("data")
 
 
-def renderuj(nazwa, k, silnik, wyniki):
+def renderuj(nazwa, k, silnik, wyniki, styl=STYL_DOMYSLNY, cel=CEL):
     aspekt, rozdz, prompt = OBRAZY[nazwa]
+    prompt = prompt + OBIEKT + STYLE[styl]
     try:
         wej = {"prompt": prompt, "aspect_ratio": aspekt, "resolution": rozdz, "output_format": "png"}
         if silnik == "gpt":
@@ -89,8 +96,8 @@ def renderuj(nazwa, k, silnik, wyniki):
                 urls = json.loads(info.get("resultJson") or "{}").get("resultUrls") or []
                 if not urls:
                     raise RuntimeError("success bez resultUrls")
-                os.makedirs(CEL, exist_ok=True)
-                plik = os.path.join(CEL, f"{nazwa}.png")
+                os.makedirs(cel, exist_ok=True)
+                plik = os.path.join(cel, f"{nazwa}.png")
                 with urllib.request.urlopen(urls[0], timeout=120) as r, open(plik, "wb") as f:
                     f.write(r.read())
                 wyniki[nazwa] = f"OK {time.time() - t0:.0f} s → {os.path.normpath(plik)}"
@@ -108,6 +115,8 @@ def main():
     ap.add_argument("nazwy", nargs="*")
     ap.add_argument("--silnik", choices=["nb", "gpt"], default="nb")
     ap.add_argument("--saldo", action="store_true")
+    ap.add_argument("--styl", choices=sorted(STYLE), default=STYL_DOMYSLNY)
+    ap.add_argument("--cel", default=CEL, help="output folder (default: ../panel/grafiki)")
     a = ap.parse_args()
     k = klucz()
     przed = saldo(k)
@@ -117,7 +126,9 @@ def main():
     nazwy = a.nazwy or list(OBRAZY)
     wyniki, watki = {}, []
     for n in nazwy:
-        t = threading.Thread(target=renderuj, args=(n, k, a.silnik, wyniki))
+        if n not in OBRAZY:
+            sys.exit(f"Nie znam obrazu „{n}” — znane: {', '.join(OBRAZY)}")
+        t = threading.Thread(target=renderuj, args=(n, k, a.silnik, wyniki, a.styl, a.cel))
         t.start()
         watki.append(t)
     for t in watki:

@@ -1,15 +1,18 @@
 # AGENTS.md — manual dla AI (Claude Code, Codex i inne)
 
-Użytkownik dał Ci to repo, żebyś **zainstalował i uruchomił GTA Lektor na jego Macu**. Zwykle nie jest programistą:
+Użytkownik dał Ci to repo, żebyś **zainstalował i uruchomił lektora gier na jego Macu** (program „Lektor Gier na
+konsoli”; aplikacja w `/Applications` nazywa się na razie „GTA Lektor” — dawna nazwa, zostaje, bo wskazują na nią
+ikonka w Docku i skrypty). Zwykle nie jest programistą:
 rozmawiaj z nim po polsku, prostym językiem, jeden krok naraz. Wszystko, co da się zrobić poleceniem, robisz Ty.
 Użytkownik robi tylko trzy rzeczy, których AI zrobić nie może: **klika zgody macOS**, **pobiera paczkę lektora**
-i **włącza grę / napisy w grze**.
+i **włącza grę / napisy w grze**. Pobieranie paczek z poziomu programu jeszcze nie istnieje — paczki pobiera człowiek.
 
 ## Co to jest (żebyś rozumiał, co instalujesz)
 
-Polski lektor do GTA VI na Macu. Czytnik co ~250 ms robi zrzut obszaru napisów (ekran Maca z grą zdalną Xboxa
+Polski lektor do gier na Macu, ułożony jak katalog: każda paczka lektora w folderze gier to kafelek z okładką.
+Pierwsza gra sprawdzona na żywo na Xboxie: GTA VI. Czytnik co ~250 ms robi zrzut obszaru napisów (ekran Maca z grą zdalną Xboxa
 albo obraz z karty przechwytującej), rozpoznaje tekst wbudowanym OCR macOS (Vision, `pl-PL`), dopasowuje go do
-`subtitles.json` z paczki społeczności GameReader 2.0 i odtwarza gotowe nagranie `audio/<id>.opus` z tej paczki.
+`subtitles.json` z paczki wybranej gry (format społeczności GameReader 2.0) i odtwarza gotowe nagranie `audio/<id>.opus` z tej paczki.
 Nic nie jest syntezowane na żywo. Panel sterowania to strona HTML z małego serwera na Macu; iPhone może być pilotem
 i głośnikiem lektora.
 
@@ -22,7 +25,7 @@ i głośnikiem lektora.
 | `aplikacja/start-panel.command` | uruchamia serwer w oknie Terminala (aplikacja go woła) |
 | `instaluj.sh` | cała instalacja: `.venv`, pakiety, aplikacja, folder `paczki/` |
 | `Lektor GTA6.command` | stare menu w Terminalu (demo, karta, podgląd obszaru) |
-| `paczki/` | tu leży paczka `.zip` i opcjonalny film demo `.mp4` (poza gitem) |
+| `paczki/` | folder gier: paczki `.zip` i opcjonalny film demo `.mp4` (poza gitem) |
 
 ## Instalacja — krok po kroku
 
@@ -33,15 +36,18 @@ i głośnikiem lektora.
 3. **Uruchom instalator:** `./instaluj.sh` (z folderu repo). Tworzy `.venv`, instaluje `requirements.txt`, sprawdza
    import, buduje aplikację „GTA Lektor” w `/Applications`. Kod wyjścia ≠ 0 → przeczytaj komunikat, napraw, powtórz.
    Opcjonalnie `brew install ffmpeg` (okienko z filmem w demo, lista kart przechwytujących).
-4. **Paczka lektora (robi użytkownik):** poproś go o pobranie paczki GTA VI dla GameReadera 2.0 ze strony
-   https://gamereader.pl (w chwili pisania plik `grand-theft-auto-vi-v4.zip`, ok. 2,9 GB) i wrzucenie `.zip`
-   do folderu `paczki/` (`open paczki`). Nie rozpakowuj — program czyta prosto z ZIP-a. Paczka należy do jej
-   autorów: nie wrzucaj jej do gita ani nigdzie indziej. Sprawdzenie:
+4. **Paczka lektora (robi użytkownik):** zapytaj, w jaką grę gra, i poproś o pobranie paczki tej gry dla
+   GameReadera 2.0 ze strony https://gamereader.pl oraz wrzucenie `.zip` do folderu `paczki/` (`open paczki`;
+   w panelu: kafelek „＋ Dodaj grę” → „Otwórz folder gier”). Nie rozpakowuj — program czyta prosto z ZIP-a. Paczka
+   należy do jej autorów: nie wrzucaj jej do gita ani nigdzie indziej. Gra pojawia się w katalogu panelu sama
+   (ok. 5 s). Sprawdzenie z wiersza poleceń:
    `.venv/bin/python -c "import lektor as L; p=L.Paczka(L.znajdz('.zip','LEKTOR_PACZKA')); print(len(p.ids))"`
-   (paczka GTA VI v4: ok. 373 tys. kwestii).
+   (np. paczka GTA VI v4: ok. 373 tys. kwestii). Przy każdej grze panel pokazuje, jak bardzo jest sprawdzona
+   („Sprawdzona na Xboxie”, „Próba na nagraniu gry”, „Może gubić kwestie”…) — powtórz to użytkownikowi uczciwie.
 5. **Pierwsze uruchomienie:** użytkownik klika „GTA Lektor” w Aplikacjach. Otwiera się okno Terminala z serwerem
    (ma zostać otwarte, można zminimalizować) i panel w oknie Chrome. Wymaga **Google Chrome**.
-6. **Test bez gry:** jeśli w `paczki/` jest film `.mp4` z napisami GTA VI, przycisk „Demo” w panelu zagra lektora.
+6. **Test bez gry:** jeśli w `paczki/` jest film `.mp4` z napisami gry, przycisk „Demo” na ekranie gry zagra lektora
+   (bez filmu: „Posłuchaj próbki” odtwarza kilka nagrań z paczki).
    Test z wiersza poleceń (bez dźwięku): `.venv/bin/python lektor.py --wideo paczki/<film>.mp4 --szybko --bez-dzwieku`
    — wypisuje rozpoznane kwestie (`🎙`). Zero kwestii przy filmie z napisami = problem z OCR albo obszarem napisów.
 
@@ -60,9 +66,10 @@ widać w panelu jako żółty pasek z przyciskiem „Otwórz ustawienia”. Nie 
 
 ## Ustawienia w grze i na Xboxie (powiedz użytkownikowi)
 
-- GTA VI: napisy **włączone**, rozmiar **mały** (obszar napisów w paczce jest dobrany pod mały rozmiar). Autorzy paczki
-  zalecają też tło napisów na 100 % (ciemny pasek pod tekstem). U autora programu OCR działał także bez tła — gdy
-  lektor gubi kwestie na jasnych scenach, każ włączyć tło.
+- Napisy w grze **włączone**; rozmiar i tło według autora paczki — ekran gry w panelu pokazuje jego słowa („Ustaw
+  w grze”). Przykład GTA VI: rozmiar **mały** (obszar napisów w paczce jest dobrany pod mały rozmiar), autorzy zalecają
+  tło napisów na 100 %. U autora programu OCR działał także bez tła — gdy lektor gubi kwestie na jasnych scenach,
+  każ włączyć tło.
 - Gra zdalna: Chrome → https://www.xbox.com/pl-PL/play/consoles, okno gry na **pełnym ekranie** Maca (czytnik
   zakłada obraz 16:9 na całym ekranie).
 - Dźwięk gry na telewizorze przy grze zdalnej: Xbox przerzuca wtedy dźwięk na Maca. Pomaga: Xbox → Ustawienia →
@@ -71,7 +78,7 @@ widać w panelu jako żółty pasek z przyciskiem „Otwórz ustawienia”. Nie 
 
 ## Pilot w iPhonie (opcjonalnie)
 
-Panel na Macu → karta „📱 Pilot w iPhonie” → kod QR → aparat iPhone'a → Safari → Udostępnij → „Do ekranu
+Panel na Macu → Ustawienia → karta „📱 Pilot w iPhonie” → kod QR → aparat iPhone'a → Safari → Udostępnij → „Do ekranu
 początkowego”. Telefon w tym samym Wi-Fi. Profil „iPhone” gra lektora z telefonu (też przy zablokowanym ekranie;
 pilot ma zostać otwarty). Z sieci serwer wpuszcza tylko z tajnym kluczem (pole `klucz` w `ustawienia.json`) —
 **nigdy go nie pokazuj, nie commituj, nie wklejaj do logów**; „Nowy kod” w panelu go unieważnia.
@@ -83,7 +90,10 @@ pilot ma zostać otwarty). Z sieci serwer wpuszcza tylko z tajnym kluczem (pole 
 - **Lektor milczy w grze:** `Lektor GTA6.command` → opcja 4 zapisuje `podglad.png` i `podglad_obszar.png` — w drugim
   muszą być napisy. Nie ma → gra nie na pełnym ekranie albo brak zgody na nagrywanie ekranu.
 - **Port 8797 zajęty:** serwer już działa (`lsof -iTCP:8797 -sTCP:LISTEN`); otwórz `http://127.0.0.1:8797/`.
-- **Paczka:** komunikat w panelu „Nie widzę paczki” → `.zip` nie leży w `paczki/` (albo ustaw `LEKTOR_PACZKA`).
+- **Paczka:** katalog pusty albo komunikat „Nie widzę paczki wybranej gry” → `.zip` nie leży w folderze gier
+  (`paczki/` albo `LEKTOR_PACZKI` z `lokalne.env`); „Nie widzę dysku” → dysk zewnętrzny z paczkami odłączony.
+- **Wyłączanie:** przycisk „Wyłącz program” w panelu kończy serwer (także gdy połączony jest pilot). Bez niego
+  serwer kończy się po zamknięciu okna panelu, a przy połączonym pilocie dopiero po dłuższej ciszy telefonu.
 - **Przeniesiono folder repo:** uruchom ponownie `aplikacja/zbuduj.sh` (aplikacja zapamiętuje ścieżkę).
 - **Serwer testowy obok działającego:** `LEKTOR_PORT=8798 LEKTOR_USTAWIENIA=/tmp/x.json .venv/bin/python serwer_panelu.py`.
 

@@ -3,40 +3,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>GTA Lektor</title>
+<title>Lektor Gier na konsoli</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Lektor">
-<meta name="theme-color" content="#140a2c">
+<meta name="theme-color" content="#121318">
 <link rel="apple-touch-icon" href="/ikona-180.png">
 <link rel="manifest" href="/manifest.json">
 <style>
 /* Colours of the play button and highlights come from the look (Ustawienia → Wygląd): the game theme (from its
-   cover, darkened on the server until white text has >= 4.5:1) or a fixed background. */
-:root{--ink:#fff;--ink2:rgba(255,255,255,.74);--ink3:rgba(255,255,255,.55);--card:rgba(20,12,40,.74);--line:rgba(255,255,255,.14);
---akcent:#e80063;--akcent2:#bf5500;--tlo:#140a2c;--ok:#4be3a3;--warn:#ffcc66;--bad:#ff6b6b;--info:#8cc8ff}
+   cover, darkened on the server until white text has >= 4.5:1) or a fixed one. The background is drawn from the
+   covers of the games on disk: a blurred wall of covers (catalogue, settings) or the game's own cover (game screen). */
+:root{--ink:#fff;--ink2:rgba(255,255,255,.74);--ink3:rgba(255,255,255,.55);--card:rgba(18,19,24,.76);--line:rgba(255,255,255,.14);
+--akcent:#0e7c86;--akcent2:#1c6fb5;--tlo:#121318;--ok:#4be3a3;--warn:#ffcc66;--bad:#ff6b6b;--info:#8cc8ff;--okladka:none}
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:var(--tlo);color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif}
-body{background:var(--tlo)}
-#tlo{position:fixed;inset:0;z-index:-1;background-size:cover;background-position:right center;transition:background .3s}
-body.w-klasyczny #tlo{background-image:linear-gradient(90deg,rgba(16,7,36,.94) 0%,rgba(16,7,36,.80) 55%,rgba(16,7,36,.45) 100%),url(/grafiki/tlo.jpg)}
-body.w-grafit #tlo{background-image:radial-gradient(120% 90% at 85% 0%,#2a2e36 0%,#15171c 55%,#0e0f12 100%)}
-body.w-granat #tlo{background-image:radial-gradient(120% 90% at 85% 0%,#1d2f5c 0%,#0d1730 55%,#080e1f 100%)}
-body.w-motyw #tlo{background-image:linear-gradient(180deg,color-mix(in srgb,var(--tlo) 82%,transparent) 0%,var(--tlo) 72%),var(--okladka,none);background-position:center top;background-size:cover}
+html,body{margin:0;min-height:100%;color:var(--ink);font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",sans-serif}
+html{background:var(--tlo)}
+body{background:transparent}  /* a body background would cover the fixed #tlo layer (z-index -1) down to the content height */
+#tlo{position:fixed;inset:0;z-index:-1;overflow:hidden;background:radial-gradient(120% 90% at 85% 0%,#25272e 0%,#141519 55%,#0d0e11 100%)}
+#tlo>div{position:absolute;inset:-80px;display:none}
+#tlo::after{content:"";position:absolute;inset:0}
+/* catalogue / settings: a wall of all covers, blurred and darkened (built in JS from the covers on disk) */
+.mozaika{grid-template-columns:repeat(var(--kol,6),1fr);gap:8px;align-content:start;filter:blur(9px) saturate(1.1) brightness(.5);transform:rotate(-5deg) scale(1.15)}
+.mozaika img{width:100%;aspect-ratio:460/215;object-fit:cover;display:block;border-radius:8px}
+body.tlo-mozaika #tloMozaika{display:grid}
+body.tlo-mozaika #tlo::after{background:linear-gradient(180deg,rgba(10,10,13,.62) 0%,rgba(10,10,13,.42) 45%,rgba(10,10,13,.72) 100%)}
+/* game screen: the game's cover blurred over the whole page, fading into the theme colour */
+body.tlo-gra #tloRozmyta{display:block;background:var(--okladka) center/cover;filter:blur(40px) saturate(1.25) brightness(.6)}
+body.tlo-gra #tlo::after{background:linear-gradient(180deg,color-mix(in srgb,var(--tlo) 35%,transparent) 0%,color-mix(in srgb,var(--tlo) 72%,transparent) 50%,var(--tlo) 92%)}
+body.w-grafit #tlo{background:radial-gradient(120% 90% at 85% 0%,#2a2e36 0%,#15171c 55%,#0e0f12 100%)}
+body.w-granat #tlo{background:radial-gradient(120% 90% at 85% 0%,#1d2f5c 0%,#0d1730 55%,#080e1f 100%)}
 .wrap{max-width:820px;margin:0 auto;padding:22px 24px 40px}
 header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.logo{width:52px;height:52px;border-radius:14px;background:linear-gradient(160deg,#3a1670,#b0267a 55%,#ff7a45);display:grid;place-items:center;flex:none}
+.logo{width:52px;height:52px;border-radius:14px;background:var(--akcent);border:1px solid rgba(255,255,255,.22);display:grid;place-items:center;flex:none}
+.tytul{min-width:0}
+header .wylacz{background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)),rgba(14,15,19,.7);flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:13px}
+.wylacz svg{flex:none}
+#wylaczono{position:fixed;inset:0;z-index:20;display:none;place-items:center;background:#0c0d10;text-align:center;padding:24px}
+.wylTxt{color:var(--ink2);font-size:15px;margin:0}
+#wylaczono.show{display:grid}
+#wylaczono h2{font-size:24px}
 h1{font-size:26px;margin:0;font-weight:700;letter-spacing:.3px}
 h2{font-size:22px;margin:0 0 4px}
 .sub{color:var(--ink2);font-size:14px;margin:0}
-.pill{margin-left:auto;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.1);border:1px solid var(--line);white-space:nowrap}
-.pill.ok{background:rgba(75,227,163,.16);border-color:rgba(75,227,163,.5);color:var(--ok)}
-.pill.run{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.45);color:#fff}
-.pill.bad{background:rgba(255,107,107,.16);border-color:rgba(255,107,107,.55);color:#ffb0b0}
+.pill{margin-left:auto;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(14,15,19,.78);border:1px solid var(--line);white-space:nowrap}
+/* the tint sits on a dark base: the header lies straight on a cover (bright covers made the bare tint unreadable) */
+.pill.ok{background:linear-gradient(rgba(75,227,163,.14),rgba(75,227,163,.14)),rgba(14,15,19,.8);border-color:rgba(75,227,163,.5);color:var(--ok)}
+.pill.run{background:linear-gradient(rgba(255,255,255,.12),rgba(255,255,255,.12)),rgba(14,15,19,.8);border-color:rgba(255,255,255,.45);color:#fff}
+.pill.bad{background:linear-gradient(rgba(255,107,107,.14),rgba(255,107,107,.14)),rgba(14,15,19,.8);border-color:rgba(255,107,107,.55);color:#ffb0b0}
 nav{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
-nav button{border:1px solid var(--line);background:rgba(255,255,255,.06);border-radius:999px;padding:8px 16px;font:inherit;font-weight:600;color:var(--ink2);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-nav button.on{background:rgba(255,255,255,.16);color:#fff;border-color:rgba(255,255,255,.4)}
+nav button{border:1px solid var(--line);background:linear-gradient(rgba(255,255,255,.06),rgba(255,255,255,.06)),rgba(14,15,19,.6);border-radius:999px;padding:8px 16px;font:inherit;font-weight:600;color:var(--ink2);cursor:pointer;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+nav button.on{background:linear-gradient(rgba(255,255,255,.16),rgba(255,255,255,.16)),rgba(14,15,19,.6);color:#fff;border-color:rgba(255,255,255,.4)}
 nav .zebatka{margin-left:auto}
 .alert{border-radius:14px;padding:12px 16px;margin:0 0 14px;font-size:14px;display:none;align-items:center;gap:12px;flex-wrap:wrap}
 .alert.show{display:flex}
@@ -57,14 +75,27 @@ nav .zebatka{margin-left:auto}
 .kafel b{display:block;font-size:15px;padding:8px 12px 2px;line-height:1.3}
 .kafel .znak{position:absolute;top:8px;left:8px;background:rgba(0,0,0,.72);border-radius:999px;padding:2px 10px;font-size:12px;font-weight:700}
 .kafel.wylaczony{opacity:.62}
+.kafel.dodaj{border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px 12px;min-height:150px;gap:6px}
+.kafel.dodaj:hover{border-color:rgba(255,255,255,.6)}
+.kafel.dodaj .plus{font-size:34px;line-height:1;font-weight:300}
+.kafel.dodaj b{padding:0}
+.kafel.dodaj small{color:var(--ink2);font-size:12.5px}
+.kroki{margin:6px 0 4px;padding-left:22px;color:var(--ink2);font-size:14px;text-align:left}
+.kroki li{margin:6px 0}
+.kroki b{color:var(--ink)}
+.dodajPrzyciski{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+a.btn{text-decoration:none;color:var(--ink);display:inline-block}
 .odznaka{display:inline-block;margin:4px 12px 0;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid currentColor}
-.s-sprawdzona{color:var(--ok)}.s-nagranie{color:var(--info)}.s-niesprawdzona,.s-wczytuje,.s-nie_na_dysku{color:var(--ink2)}
+.s-sprawdzona{color:var(--ok)}.s-nagranie{color:var(--info)}.s-niesprawdzona,.s-wczytuje,.s-kopiuje,.s-nie_na_dysku{color:var(--ink2)}
 .s-ryzyko{color:var(--warn)}.s-nie_na_macu,.s-blad{color:#ffb0b0}
 .pusto{text-align:center;padding:26px 18px}
 .pusto p{margin:6px 0 14px;color:var(--ink2)}
 /* game screen */
 .bohater{display:flex;gap:18px;align-items:flex-start}
-.bohater img{width:300px;max-width:42%;aspect-ratio:460/215;object-fit:cover;border-radius:14px;flex:none;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+/* the game's cover as a big banner: the whole cover (no logo cut off) on its own blurred copy filling the band */
+.baner{position:relative;height:clamp(180px,44vh,440px);border-radius:20px;overflow:hidden;margin:0 0 14px;box-shadow:0 18px 50px rgba(0,0,0,.45);background:rgba(255,255,255,.04)}
+.baner .baner-tlo{position:absolute;inset:-40px;background:var(--okladka) center/cover;filter:blur(24px) brightness(.75)}
+.baner img{position:relative;width:100%;height:100%;object-fit:contain;display:block}
 .bohater .meta{flex:1;min-width:0}
 .autor{color:var(--ink3);font-size:13px;margin:0 0 8px}
 .opis{color:var(--ink2);font-size:14px;margin:10px 0 0}
@@ -136,8 +167,9 @@ details[open] summary::before{content:"▾ ";}
 .teldiag{font-size:13px;color:var(--ink2);margin:10px 0 0}
 /* phone: one thumb — big controls, Play/Stop pinned to the bottom edge */
 body.tel .wrap{padding:calc(14px + env(safe-area-inset-top)) 14px calc(118px + env(safe-area-inset-bottom))}
-body.tel h1{font-size:22px;white-space:nowrap} body.tel .sub{display:none} body.tel .logo{width:44px;height:44px}
-body.tel .pill{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body.tel h1{font-size:19px;line-height:1.15;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}  /* a long name takes two lines */ body.tel .sub{display:none} body.tel .logo{width:44px;height:44px}
+body.tel header{gap:10px} body.tel .wylacz .napis{display:none} body.tel .wylacz{padding:0;width:40px;height:40px;justify-content:center}
+body.tel .pill{flex:none;max-width:42vw;overflow:hidden;text-overflow:ellipsis}
 body.tel nav{flex-wrap:nowrap} body.tel nav button{min-width:0;flex:0 1 auto} body.tel nav .zebatka{flex:none}
 body.tel .zebatka .opis{display:none}
 body.tel .macOnly{display:none!important}
@@ -152,16 +184,18 @@ body:not(.tel) .telOnly{display:none!important}
 @media (max-width:620px){.gry{grid-template-columns:1fr 1fr;gap:10px}.kafel b{font-size:14px;padding:6px 10px 0}.odznaka{margin:4px 10px 0;font-size:11.5px}
  .profiles{grid-template-columns:1fr 1fr}.prof span{display:none}.prof{padding-bottom:10px}.prof img{margin-bottom:6px}
  .wyglady{grid-template-columns:1fr 1fr}.row label{min-width:96px}.pilot{flex-direction:column}
- .bohater{flex-direction:column}.bohater img{width:100%;max-width:100%}}
+ .bohater{flex-direction:column}}
 </style>
 </head>
-<body class="w-klasyczny">
-<div id="tlo"></div>
+<body class="w-motyw">
+<div id="tlo"><div id="tloMozaika" class="mozaika"></div><div id="tloRozmyta"></div></div>
+<div id="wylaczono"><div><h2>Program wyłączony</h2><p class="wylTxt">Możesz zamknąć to okno. Lektora włączysz znów ikonką na Macu.</p></div></div>
 <div class="wrap">
 <header>
   <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M8 21h8"/></svg></div>
-  <div><h1>GTA Lektor</h1><p class="sub">Polski lektor do gier — czyta napisy z gry</p></div>
+  <div class="tytul"><h1 id="nazwaApp">Lektor Gier na konsoli</h1><p class="sub">Polski lektor do gier — czyta napisy z gry</p></div>
   <div class="pill" id="pill">Łączę…</div>
+  <button class="btn wylacz" id="wylacz" title="Wyłącz program" aria-label="Wyłącz program"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></svg><span class="napis">Wyłącz program</span></button>
 </header>
 
 <nav>
@@ -171,10 +205,10 @@ body:not(.tel) .telOnly{display:none!important}
 </nav>
 
 <div class="alert warn" id="alWersja"><span>Jest nowsza wersja panelu. Odśwież, kiedy skończysz słuchać (odświeżenie wyłącza dźwięk w tym iPhonie do następnego stuknięcia).</span><button class="btn small" onclick="location.reload()">Odśwież</button></div>
-<div class="alert bad" id="alPaczka"><span id="alPaczkaTxt"></span><button class="btn small macOnly" onclick="api('/api/folder-paczek')">Otwórz folder paczek</button><button class="btn small" onclick="odswiezKatalog()">Sprawdź ponownie</button></div>
-<div class="alert warn" id="alZgoda"><span>macOS musi pozwolić „GTA Lektor” widzieć ekran (napisy gry). Kliknij, zaznacz „GTA Lektor” na liście i uruchom panel jeszcze raz.</span><button class="btn small macOnly" onclick="api('/api/zgoda-ekranu')">Otwórz ustawienia</button></div>
+<div class="alert bad" id="alPaczka"><span id="alPaczkaTxt"></span><button class="btn small macOnly" onclick="api('/api/folder-paczek')">Otwórz folder gier</button><button class="btn small" onclick="odswiezKatalog()">Sprawdź ponownie</button></div>
+<div class="alert warn" id="alZgoda"><span>macOS musi pozwolić lektorowi widzieć ekran (napisy gry). Kliknij, włącz na liście „Terminal” (to on uruchamia lektora) i otwórz program jeszcze raz.</span><button class="btn small macOnly" onclick="api('/api/zgoda-ekranu')">Otwórz ustawienia</button></div>
 <div class="alert warn" id="alWarn"><span id="alWarnTxt"></span></div>
-<div class="alert bad" id="alSiec"><span>Nie mogę połączyć się z Makiem. Czy panel GTA Lektor na Macu jest otwarty, a telefon w tym samym Wi-Fi?</span></div>
+<div class="alert bad" id="alSiec"><span>Nie mogę połączyć się z Makiem. Czy lektor na Macu jest włączony, a telefon w tym samym Wi-Fi?</span></div>
 <!-- the reader can be stopped from every view (the game screen has its own Graj/Stop button) -->
 <div class="actions" id="stopBar" style="display:none"><button class="play stop" id="stopGlobal"><svg width="22" height="22" viewBox="0 0 24 24" fill="#fff"><rect x="6" y="6" width="12" height="12" rx="2"/></svg><span id="stopTxt">Zatrzymaj lektora</span></button></div>
 
@@ -183,19 +217,24 @@ body:not(.tel) .telOnly{display:none!important}
   <div class="card pusto" id="katStan" style="display:none">
     <h2 id="katStanTytul"></h2><p id="katStanTxt"></p>
     <button class="btn" onclick="odswiezKatalog()">Sprawdź ponownie</button>
-    <button class="btn macOnly" id="katFolder" onclick="api('/api/folder-paczek')">Otwórz folder paczek</button>
+    <button class="btn macOnly" id="katFolder" onclick="api('/api/folder-paczek')">Otwórz folder gier</button>
+    <div id="katPustyKroki" style="display:none;text-align:left;margin-top:16px"></div>
   </div>
   <div id="katLista">
     <p class="step">Moje gry — paczki lektora na dysku</p>
     <div class="gry" id="gry"></div>
   </div>
+  <div class="card" id="dodajKarta" style="display:none">
+    <p class="step">＋ Dodaj grę</p>
+    <div id="dodajKroki"></div>
+  </div>
 </section>
 
 <!-- ============================================================ game screen -->
 <section class="widok" id="vGra">
+  <div class="baner" id="graBaner"><div class="baner-tlo"></div><img id="graOkl" alt=""></div>
   <div class="card">
     <div class="bohater">
-      <img id="graOkl" alt="">
       <div class="meta">
         <h2 id="graNazwa"></h2>
         <p class="autor" id="graAutor"></p>
@@ -252,8 +291,8 @@ body:not(.tel) .telOnly{display:none!important}
 <section class="card">
   <p class="step">3 · Wygląd</p>
   <div class="wyglady" id="wyglady">
-    <button class="wyg" data-w="motyw"><i style="background:linear-gradient(135deg,#b56003,#d93744 50%,#395665)"></i><span>Motyw gry</span><small>automatyczny, z okładki</small></button>
-    <button class="wyg" data-w="klasyczny"><i style="background-image:url(/grafiki/tlo.jpg)"></i><span>Klasyczny</span><small>tło lektora</small></button>
+    <button class="wyg" data-w="motyw"><i style="background:linear-gradient(135deg,#7a5a2e,#7c3b44 50%,#395665)"></i><span>Motyw gry</span><small>kolory i tło z okładki</small></button>
+    <button class="wyg" data-w="klasyczny"><i id="wygOkladki" style="background:#2a2c33"></i><span>Okładki</span><small>ściana okładek gier</small></button>
     <button class="wyg" data-w="grafit"><i style="background:radial-gradient(120% 90% at 85% 0%,#2a2e36,#15171c 55%,#0e0f12)"></i><span>Grafit</span><small>spokojne, ciemne</small></button>
     <button class="wyg" data-w="granat"><i style="background:radial-gradient(120% 90% at 85% 0%,#1d2f5c,#0d1730 55%,#080e1f)"></i><span>Granat</span><small>spokojne, ciemne</small></button>
   </div>
@@ -309,7 +348,7 @@ const HINT={
  iphone: TEL ? "Stuknij „Włącz dźwięk” niżej. Lektor gra też przy zablokowanym ekranie — tylko nie zamykaj pilota (nie przesuwaj go w górę w przełączniku aplikacji)."
              : "Lektor zagra z iPhone'a: otwórz pilota w telefonie (kod QR na dole) i stuknij „Włącz dźwięk w tym iPhonie”. W Chrome wycisz kartę Xbox."};
 const PROFIL_NAZWA={tv_mac:"TV + Mac",tv_glosnik:"TV + głośnik",sluchawki:"Słuchawki",iphone:"iPhone"};
-const STALE={klasyczny:{akcent:"#e80063",akcent2:"#bf5500",tlo:"#140a2c"},grafit:{akcent:"#476af5",akcent2:"#7950f2",tlo:"#15171c"},
+const STALE={klasyczny:{akcent:"#0e7c86",akcent2:"#1c6fb5",tlo:"#121318"},grafit:{akcent:"#476af5",akcent2:"#7950f2",tlo:"#15171c"},
  granat:{akcent:"#e12567",akcent2:"#ae6500",tlo:"#0d1730"}};
 const DEV_RE={tv_mac:/macbook|głośniki|built-in|wbudowan/i, sluchawki:/airpods|słuchawk|headphone|buds|beats|wh-|bose/i,
  wirtualne:/teams|zoom|blackhole|loopback|soundflower|aggregate|multi-output|wielowyjściow|agregat|virtual|wirtualn/i};
@@ -346,39 +385,82 @@ function zHasha(){ const h=decodeURIComponent(location.hash.slice(1)); if(h.star
 $("navKatalog").onclick=()=>pokaz("katalog"); $("navUst").onclick=()=>pokaz("ustawienia"); $("navGra").onclick=()=>pokaz("gra",graWidok);
 addEventListener("hashchange",()=>{ const [w,id]=zHasha(); if(w) pokaz(w,id); });
 
-function motyw(){  // Ustawienia → Wygląd: the game theme (the game on screen, else the chosen one) or a fixed background
+function motyw(){  // Ustawienia → Wygląd: the game theme (the game on screen, else the chosen one) or a fixed one
   const w=st?st.ustawienia.wyglad:"motyw";
   const id=(widok==="gra"&&graWidok)||(st&&st.gra&&st.gra.id)||(st&&st.ustawienia.gra), g=gra(id);
   const m=w==="motyw"&&g&&g.motyw?g.motyw:null, c=m||STALE[w]||STALE.klasyczny;
   const tryb=m?"motyw":(w==="motyw"?"klasyczny":w);
-  document.body.className=document.body.className.replace(/\bw-\S+/g,"").trim()+" w-"+tryb;
+  // background: the game screen shows its own cover (game theme); the catalogue and settings a wall of all covers;
+  // Grafit / Granat stay plain. No covers yet (empty folder, no disk) = the plain neutral gradient.
+  const naGrze=widok==="gra"&&OKL[graWidok], tlo=["grafit","granat"].includes(w)?"tlo-staly":(naGrze&&w==="motyw"?"tlo-gra":"tlo-mozaika");
+  document.body.className=(document.body.className.replace(/\b(w|tlo)-\S+/g,"")+" w-"+tryb+" "+tlo).replace(/\s+/g," ").trim();
   const s=document.documentElement.style; s.setProperty("--akcent",c.akcent); s.setProperty("--akcent2",c.akcent2); s.setProperty("--tlo",c.tlo);
-  s.setProperty("--okladka",m&&g.okladka?`url("${okladka(g.id)}")`:"none");
+  s.setProperty("--okladka",naGrze?`url("${OKL[graWidok].url}")`:"none");
   document.querySelector('meta[name=theme-color]').content=c.tlo;
   document.querySelectorAll(".wyg").forEach(b=>b.classList.toggle("on",b.dataset.w===w));
 }
+// Covers are fetched once per game as blobs (the server sends no-store) and reused by the wall and the banner.
+const OKL={};
+async function okladki(){  // one pass at a time: two overlapping passes would fetch the same cover twice (leaked URL)
+  if(okladki.biegnie){ okladki.znowu=true; return; } okladki.biegnie=true;
+  try{ do{ okladki.znowu=false; await okladkiRaz(); }while(okladki.znowu); } finally { okladki.biegnie=false; }
+}
+async function okladkiRaz(){
+  if(!kat) return; let zmiana=false;
+  for(const g of kat.gry){ if(!g.okladka) continue; const klucz=[g.id,g.wersja,g.rozmiar].join("|");
+    if(OKL[g.id]&&OKL[g.id].klucz===klucz) continue;
+    try{ const r=await get(okladka(g.id)); if(!r.ok) continue; const u=URL.createObjectURL(await r.blob());
+      if(OKL[g.id]) URL.revokeObjectURL(OKL[g.id].url); OKL[g.id]={klucz,url:u}; zmiana=true; }catch(e){} }
+  for(const id of Object.keys(OKL)) if(!gra(id)){ URL.revokeObjectURL(OKL[id].url); delete OKL[id]; zmiana=true; }
+  if(zmiana){ mozaika.bylo=null; mozaika(); renderGra(); motyw(); }
+}
+function mozaika(){  // as many tiles as fill the (rotated, enlarged) screen, covers mixed so neighbours differ
+  const u=kat?kat.gry.filter(g=>OKL[g.id]).map(g=>OKL[g.id].url):[];
+  const kol=Math.max(3,Math.ceil((innerWidth+160)/(TEL?150:240))), wys=(innerWidth+160)/kol*215/460+8;
+  const rz=Math.ceil((innerHeight+160)/wys)+1, klucz=u.join()+"|"+kol+"|"+rz;
+  if(mozaika.bylo===klucz) return; mozaika.bylo=klucz;
+  const el=$("tloMozaika"); el.style.setProperty("--kol",kol); let html="";
+  if(u.length) for(let r=0;r<rz;r++) for(let c=0;c<kol;c++) html+=`<img src="${u[(c+r*(u.length>2?2:1))%u.length]}" alt="">`;
+  el.innerHTML=html;
+  $("wygOkladki").style.background=u.length?`center/cover url("${u[0]}")`:"#2a2c33";
+}
+let mozaikaT=null; addEventListener("resize",()=>{ clearTimeout(mozaikaT); mozaikaT=setTimeout(mozaika,200); });
 document.querySelectorAll(".wyg").forEach(b=>b.onclick=async()=>{ wygladTouched=Date.now(); if(st) st.ustawienia.wyglad=b.dataset.w; motyw(); await api("/api/ustawienia",{wyglad:b.dataset.w}); });
 
-const TYTUL={blad_pobrania:"Nie mogę pobrać listy gier",brak_dysku:"Nie widzę dysku z grami",brak_folderu:"Nie ma folderu paczek",pusty:"Nie masz jeszcze żadnej gry",blad:"Nie mogę odczytać folderu paczek",skanuje:"Sprawdzam folder paczek…"};
+function krokiDodaj(){  // the same three steps on the add tile and in an empty catalogue
+  return `<ol class="kroki"><li><b>Pobierz paczkę lektora</b> wybranej gry ze strony gamereader.pl (plik .zip — nie rozpakowuj go).</li>`
+   +`<li><b>Wrzuć plik .zip do folderu gier</b> na Macu${TEL?" (zrób to na Macu)":" — przycisk „Otwórz folder gier” niżej"}.</li>`
+   +`<li><b>Gra pojawi się tu sama</b> po ok. 5 sekundach.</li></ol>`
+   +`<p class="small">Wkrótce: pobieranie gier z biblioteki GameReadera prosto z tego okna.</p>`
+   +`<div class="dodajPrzyciski macOnly"><a class="btn" href="https://gamereader.pl" target="_blank" rel="noopener">Otwórz gamereader.pl</a>`
+   +`<button class="btn" onclick="api('/api/folder-paczek')">Otwórz folder gier</button></div>`;
+}
+const TYTUL={blad_pobrania:"Nie mogę pobrać listy gier",brak_dysku:"Nie widzę dysku z grami",brak_folderu:"Nie ma folderu gier",pusty:"Nie masz jeszcze żadnej gry",blad:"Nie mogę odczytać folderu gier",skanuje:"Sprawdzam folder gier…"};
 function renderKatalog(){
   if(!kat) return;
   const ok=kat.stan==="ok";  // a broken disk never looks like an empty catalogue: each folder state has its own text
   $("katStan").style.display=ok?"none":""; $("katLista").style.display=ok?"":"none";
-  if(!ok){ $("katStanTytul").textContent=TYTUL[kat.stan]||"Katalog"; $("katStanTxt").textContent=kat.komunikat||""; $("katFolder").style.display=kat.stan==="brak_dysku"?"none":""; }
+  if(!ok){ $("katStanTytul").textContent=TYTUL[kat.stan]||"Katalog"; $("katStanTxt").textContent=kat.komunikat||""; $("katFolder").style.display=kat.stan==="brak_dysku"?"none":"";
+    const pusty=kat.stan==="pusty"; $("katPustyKroki").style.display=pusty?"":"none"; if(pusty&&!$("katPustyKroki").innerHTML) $("katPustyKroki").innerHTML=krokiDodaj();
+    if(pusty) $("katFolder").style.display="none"; }  // the steps carry their own folder button
+  if(!ok) $("dodajKarta").style.display="none";
   const wyb=st&&st.ustawienia.gra;
   const html=kat.gry.map(g=>{
-    const wyl=["nie_na_macu","blad","nie_na_dysku"].includes(g.stan);
-    const obraz=g.okladka?`<img class="ok-img" src="${okladka(g.id)}" alt="" loading="lazy">`:`<div class="bez">${g.stan==="wczytuje"?"…":"🎮"}</div>`;
+    const wyl=["nie_na_macu","blad","nie_na_dysku","kopiuje"].includes(g.stan);
+    const obraz=g.okladka?`<img class="ok-img" src="${OKL[g.id]?OKL[g.id].url:okladka(g.id)}" alt="" loading="lazy">`:`<div class="bez">${["wczytuje","kopiuje"].includes(g.stan)?"…":"🎮"}</div>`;
     return `<button class="kafel${g.id===wyb?" wybrana":""}${wyl?" wylaczony":""}" data-id="${esc(g.id)}" title="${esc(g.stan_opis)}">${obraz}`
       +(g.id===wyb?`<span class="znak">${st&&st.dziala&&st.gra&&st.gra.id===g.id?"▶ czyta":"✓ wybrana"}</span>`:"")
-      +`<b>${esc(g.nazwa)}</b><span class="odznaka s-${esc(g.stan)}">${esc(g.stan_nazwa)}</span></button>`;}).join("");
+      +`<b>${esc(g.nazwa)}</b><span class="odznaka s-${esc(g.stan)}">${esc(g.stan_nazwa)}</span></button>`;}).join("")
+    +`<button class="kafel dodaj" id="kafDodaj"><span class="plus">＋</span><b>Dodaj grę</b><small>paczka lektora z gamereader.pl</small></button>`;
   if(html===renderKatalog.bylo) return;  // render() runs every second: redraw only on change (no cover refetch on the phone)
   renderKatalog.bylo=html; $("gry").innerHTML=html;
-  document.querySelectorAll(".kafel").forEach(b=>b.onclick=()=>pokaz("gra",b.dataset.id));  // opening ≠ choosing: chosen on Graj / sample
+  document.querySelectorAll(".kafel[data-id]").forEach(b=>b.onclick=()=>pokaz("gra",b.dataset.id));  // opening ≠ choosing: chosen on Graj / sample
+  $("kafDodaj").onclick=()=>{ const k=$("dodajKarta"), wid=k.style.display==="none"; if(!$("dodajKroki").innerHTML) $("dodajKroki").innerHTML=krokiDodaj();
+    k.style.display=wid?"":"none"; if(wid) k.scrollIntoView({behavior:"smooth",block:"center"}); };
 }
 async function wczytajKatalog(nr){  // the catalogue number is taken only after a good answer: a failure is retried
   try{ const r=await get("/api/katalog"); if(!r.ok) throw new Error("HTTP "+r.status);
-    kat=await r.json(); if(nr!=null) katNr=nr; renderKatalog();
+    kat=await r.json(); if(nr!=null) katNr=nr; renderKatalog(); okladki();
     if(widok==="gra"&&!gra(graWidok)) pokaz("katalog"); else { renderGra(); motyw(); } }
   catch(e){ if(kat) return;  // keep the last good list; with none, say so — a failure never looks like an empty catalogue
     kat={stan:"blad_pobrania",komunikat:"Nie mogę pobrać listy gier z Maca ("+(e.message||e)+"). Ponawiam za chwilę.",gry:[]}; renderKatalog(); }
@@ -388,15 +470,16 @@ async function odswiezKatalog(){ const r=await api("/api/paczka"); if(r&&r.ok===
 function renderGra(){
   const g=gra(graWidok); $("navGra").style.display=g?"":"none"; if(g) $("navGra").textContent=g.nazwa;
   if(!g||!st) return;
-  if($("graOkl").dataset.id!==g.id){ $("graOkl").dataset.id=g.id; $("graOkl").src=g.okladka?okladka(g.id):""; $("graOkl").style.display=g.okladka?"":"none";
-    $("graOpis").classList.add("krotki"); }
+  const u=OKL[g.id]&&OKL[g.id].url;  // the banner: the cover blob (fetched once), no cover = no banner
+  if($("graOkl").dataset.u!==(u||"")){ $("graOkl").dataset.u=u||""; if(u) $("graOkl").src=u; $("graBaner").style.display=u?"":"none"; }
+  if($("graOkl").dataset.id!==g.id){ $("graOkl").dataset.id=g.id; $("graOpis").classList.add("krotki"); }
   $("graNazwa").textContent=g.nazwa; $("graAutor").textContent=[g.autor&&"Paczka: "+g.autor,g.wersja&&"wersja "+g.wersja].filter(Boolean).join(" · ");
   $("graOdznaka").className="odznaka s-"+g.stan; $("graOdznaka").textContent=g.stan_nazwa; $("graStanOpis").textContent=g.stan_opis||"";
   $("graOpis").textContent=g.opis||""; $("graOpisWiecej").style.display=(g.opis||"").length>260&&$("graOpis").classList.contains("krotki")?"":"none";
   const wym=g.wymagania||[]; $("graRamka").style.display=wym.length?"":"none"; $("graWymagania").innerHTML=wym.map(w=>`<li>${esc(w)}</li>`).join("");
   const gl=Math.round((st.ustawienia[profil==="iphone"?"glosnosc_iphone":"glosnosc"]??1)*100);
   $("graSluchasz").innerHTML=`<span>🎧 Słuchasz: <b>${esc(PROFIL_NAZWA[profil])}</b>${profil==="iphone"?"":" · "+esc($("dev").value||"domyślne wyjście")} · ${profil==="iphone"?"wzmocnienie":"głośność"} ${gl}%</span><button class="link" onclick="pokaz('ustawienia')">Zmień w Ustawieniach</button>`;
-  const ta=st.gra&&st.gra.id===g.id, czyta=st.dziala, gotowa=!["nie_na_macu","blad","nie_na_dysku","wczytuje"].includes(g.stan);
+  const ta=st.gra&&st.gra.id===g.id, czyta=st.dziala, gotowa=!["nie_na_macu","blad","nie_na_dysku","wczytuje","kopiuje"].includes(g.stan);
   const play=$("play"), inna=czyta&&!ta;
   play.classList.toggle("stop",czyta&&ta); play.disabled=!gotowa&&!(czyta&&ta);
   play.querySelector("svg").innerHTML=czyta&&ta?'<rect x="6" y="6" width="12" height="12" rx="2"/>':'<path d="M7 4v16l13-8z"/>';
@@ -492,7 +575,8 @@ function nowaWersja(){  // old JavaScript must not stay on the phone after an up
   location.reload();
 }
 async function tick(){
-  try{ st=await (await get(z("/api/stan"))).json(); nowaWersja(); render(); }
+  if(wylaczony) return;
+  try{ st=await (await get(z("/api/stan"))).json(); if(st.wylacz) return pokazWylaczony(); nowaWersja(); render(); }
   catch(e){ $("pill").className="pill bad"; $("pill").textContent=TEL?"Brak Maca":"Panel nie odpowiada"; if(TEL) $("alSiec").classList.add("show"); }
 }
 
@@ -530,7 +614,23 @@ $("demo").onclick=()=>przycisk($("demo"),async()=>{ if(TEL&&profil==="iphone") A
 $("qrZmien").onclick=()=>{ qrCo=qrCo==="local"?"ip":"local"; if(st&&st.pilot) renderPilot(st.pilot); };
 $("nowyKlucz").onclick=async()=>{ if(!confirm("Zrobić nowy kod? Pilot dodany do ekranu iPhone'a przestanie działać — trzeba będzie zeskanować nowy kod.")) return; await api("/api/nowy-klucz"); tick(); };
 $("telBtn").onclick=()=>A.wlacz();
-if(!TEL) addEventListener("pagehide",()=>{ navigator.sendBeacon("/api/koniec?c="+CID); });
+let tickT=null, wylaczony=false;
+$("wylacz").onclick=async()=>{
+  if(!confirm("Wyłączyć program? Lektor przestanie czytać. Włączysz go znów ikonką na Macu.")) return;
+  let r=null; try{ r=await api("/api/wylacz"); }catch(e){}
+  if(!r||!r.ok){ alert((r&&r.blad)||"Nie udało się wyłączyć programu."); return; }
+  pokazWylaczony();
+};
+function pokazWylaczony(){  // this window or another one (Mac, phone) switched the program off
+  if(wylaczony) return; wylaczony=true; clearInterval(tickT); A.slucha=false; A.cisza();  // nothing polls a server that is gone
+  $("wylaczono").classList.add("show"); document.title="Program wyłączony";
+  // the program started again (Dock icon): the page comes back by itself — the phone remote stays open for days
+  const sonda=async()=>{ try{ const r=await get("/api/stan"); if(r.ok&&!(await r.json()).wylacz){ wraca=true; location.reload(); } }catch(e){} };
+  setInterval(sonda,5000);
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible") sonda(); });
+}
+let wraca=false;  // a reload because the program started again is not a closed window (no shutdown beacon to the fresh server)
+if(!TEL) addEventListener("pagehide",()=>{ if(!wraca&&!wylaczony) navigator.sendBeacon("/api/koniec?c="+CID); });  // a switched-off page is nobody's client
 
 // ------------------------------------------------------------------ iPhone as the speaker (profile "iphone")
 // One AudioContext kept running (a silent loop, like the Mac's single stream); lines arrive by long-poll,
@@ -650,7 +750,7 @@ document.addEventListener("visibilitychange",()=>{
   const [w,id]=zHasha(), wyb=st&&(st.ustawienia.gra||(st.gra&&st.gra.id));
   if(w) pokaz(w,id); else if(wyb) pokaz("gra",wyb); else pokaz("katalog");  // a chosen game opens straight on its screen
   await devices(false);
-  setInterval(tick,1000);
+  tickT=setInterval(tick,1000);
 })();
 </script>
 </body>
