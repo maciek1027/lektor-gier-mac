@@ -65,7 +65,7 @@ i głośnikiem lektora.
 | pierwsze uruchomienie aplikacji | „Lektor Gier na konsoli” chce dostęp do folderu (np. Dokumenty / Pobrane) | Zezwól |
 | aplikacja steruje Terminalem | „Lektor Gier na konsoli” chce sterować „Terminal” | OK |
 | karta przechwytująca | „Terminal” chce dostęp do kamery | Zezwól (karta udaje kamerę) |
-| PS5: pierwsze uruchomienie PS Remote Play | okienka aplikacji Sony (logowanie do PlayStation Network, łączenie z konsolą) | prowadzi aplikacja Sony; loguje się użytkownik — Ty nie wpisujesz hasła |
+| PS5: pierwsze uruchomienie PS Remote Play | okienka aplikacji Sony | prowadzi aplikacja Sony; loguje się użytkownik — Ty nie wpisujesz hasła |
 | PS5 przez kartę przechwytującą | (to nie okienko macOS) karta pokazuje czarny obraz | na konsoli: Ustawienia → System → HDMI → **Włącz HDCP** — wyłącz (robi użytkownik) |
 | pilot w iPhonie przy włączonej zaporze | „Python” chce przyjmować połączenia przychodzące | Zezwól |
 
@@ -88,10 +88,10 @@ widać w panelu jako żółty pasek z przyciskiem „Otwórz ustawienia”. Nie 
   zestaw słuchawkowy”; w Chrome wycisz kartę Xbox (prawy klik → „Wycisz witrynę”).
 - Gra zdalna z PlayStation 5: **nie Chrome**, tylko aplikacja Sony **PS Remote Play** (program szuka
   `/Applications/PS Remote Play.app` albo `~/Applications/PS Remote Play.app`). Brak aplikacji → „Graj” odmawia
-  z komunikatem; pobiera i instaluje ją użytkownik ze strony Sony, łączy z konsolą i loguje się sam. Okno aplikacji
+  z komunikatem (program sprawdza tylko te dwie ścieżki); pobiera i instaluje ją użytkownik ze strony Sony, łączy z konsolą i loguje się sam. Okno aplikacji
   na **pełnym ekranie** Maca.
 - PS5 przez kartę przechwytującą: wymaga wyłączenia HDCP na konsoli (Ustawienia → System → HDMI → Włącz HDCP:
-  wyłącz) — inaczej karta widzi czarny obraz. Z wyłączonym HDCP aplikacje z filmami na konsoli mogą nie działać.
+  wyłącz) — inaczej karta widzi czarny obraz. Treści wymagające HDCP nie zadziałają wtedy na konsoli — po graniu włącz HDCP z powrotem.
 - **Uczciwie:** na PS5 program nie był sprawdzony — obszary napisów w paczkach robiono pod grę na PC. Gubi kwestie
   albo milczy → najpierw pełny ekran i napisy w grze, potem podgląd obszaru (niżej, „Lektor milczy w grze”), a wynik
   zbierz do cegiełki (`--obraz inne`).

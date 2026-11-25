@@ -131,8 +131,8 @@ uruchomieniu nowej możesz ją usunąć z Aplikacji i wyciągnąć jej ikonkę z
   W programie: Ustawienia → Więcej opcji → Konsola: **PlayStation 5**. „Graj” otworzy wtedy tę aplikację zamiast
   Chrome; gdy jej nie ma, program powie, co zrobić.
 - **PlayStation 5 przez kartę przechwytującą:** PS5 szyfruje obraz na HDMI (HDCP) i karta widzi czarny ekran.
-  Na konsoli: Ustawienia → System → HDMI → **Włącz HDCP** — wyłącz. Z wyłączonym HDCP aplikacje z filmami na
-  konsoli mogą nie działać — po graniu włącz je z powrotem.
+  Na konsoli: Ustawienia → System → HDMI → **Włącz HDCP** — wyłącz. Treści, które wymagają HDCP, nie zadziałają
+  wtedy na konsoli — po graniu włącz HDCP z powrotem.
 - ⚠️ **Na PS5 nikt jeszcze tego nie sprawdził.** Obszar napisów w paczkach GameReadera przygotowano pod grę na
   komputerze; obraz z PS Remote Play może mieć inne ramki albo inny rozmiar napisów. Gdy lektor gubi kwestie albo
   milczy — daj znać (sekcja „Grasz w grę, której nie ma na liście sprawdzonych?”).

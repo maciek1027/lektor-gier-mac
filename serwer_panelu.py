@@ -61,7 +61,7 @@ XBOX = "https://www.xbox.com/pl-PL/play/consoles"
 PS_REMOTE_PLAY = ["/Applications/PS Remote Play.app", os.path.expanduser("~/Applications/PS Remote Play.app")]
 PS_BRAK = ("Nie widzę aplikacji PS Remote Play na tym Macu. Bez niej Mac nie widzi obrazu gry z PlayStation 5 "
            "(PS5 nie ma gry zdalnej w przeglądarce, jak Xbox). Pobierz ją ze strony Sony (szukaj „PS Remote Play Mac”), "
-           "przeciągnij do folderu Aplikacje, połącz z konsolą i kliknij Graj jeszcze raz — albo w Ustawieniach → "
+           "zainstaluj ją, połącz z konsolą i kliknij Graj jeszcze raz — albo w Ustawieniach → "
            "Więcej opcji wybierz konsolę Xbox albo kartę przechwytującą.")
 USTAWIENIA_EKRANU = "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
 # glosnosc = the lektor on the Mac; glosnosc_iphone = extra boost on the phone, on top of its side buttons (which a web
