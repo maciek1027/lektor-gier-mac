@@ -16,9 +16,13 @@ Lektor gra z głośników Maca, z głośnika Bluetooth, ze słuchawek albo z **i
 |---|---|---|
 | ![Moje gry na Macu](docs/panel-mac.jpg) | ![Ekran gry na Macu](docs/gra-mac.jpg) | ![Ustawienia na Macu](docs/ustawienia-mac.jpg) |
 
-| Pilot w iPhonie | Ekran gry w iPhonie |
-|---|---|
-| ![Pilot w iPhonie](docs/pilot-iphone.jpg) | ![Ekran gry w iPhonie](docs/iphone-gra.jpg) |
+| Biblioteka GameReadera — „Pobierz” na Macu |
+|---|
+| ![Biblioteka GameReadera na Macu](docs/biblioteka-mac.jpg) |
+
+| Pilot w iPhonie | Biblioteka w iPhonie | Ekran gry w iPhonie |
+|---|---|---|
+| ![Pilot w iPhonie](docs/pilot-iphone.jpg) | ![Biblioteka w iPhonie](docs/iphone-biblioteka.jpg) | ![Ekran gry w iPhonie](docs/iphone-gra.jpg) |
 
 <sub>Okładki gier na zrzutach są celowo rozmyte — należą do wydawców i autorów paczek, w programie widzisz je normalnie.</sub>
 
