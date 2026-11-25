@@ -132,6 +132,11 @@ Najprościej: otwórz Claude Code albo Codex w folderze programu i napisz, co si
 (`AGENTS.md`) i sprawdzi dziennik `~/Library/Logs/gta-lektor.log`. Najczęstsze przyczyny: brak zgody na nagrywanie
 ekranu, gra nie na pełnym ekranie, napisy w grze wyłączone (albo bez tła na jasnej scenie), brak paczki w folderze gier.
 
+## Grasz w grę, której nie ma na liście sprawdzonych?
+
+Podziel się wynikiem — działa czy nie, z jakimi ustawieniami napisów. Twoje AI zapyta o to samo po pierwszej próbie
+i przygotuje zgłoszenie, a Ty decydujesz, czy je wysłać. Jak to zrobić samodzielnie: [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Ważne
 
 - To niezależny projekt hobbystyczny. Nie jest powiązany z twórcami gier ani wydawcami, z Microsoftem (Xbox) ani

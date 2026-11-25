@@ -1,0 +1,83 @@
+# Report form: how a voice pack worked with this reader on a real game.
+# Field ids are part of the prefilled link made by zgloszenie.py (?gra=...&wersja=...) — do not rename them,
+# and keep the dropdown options identical to WYNIKI / OBRAZY in zgloszenie.py (testy/test_zgloszenie.py checks both).
+name: "Zgłoszenie gry — wynik próby"
+description: "Podziel się, jak paczka lektora zadziałała z tym programem w prawdziwej grze."
+title: "[gra] "
+labels: ["zgloszenie-gry"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Dziękujemy za cegiełkę! Twój wynik pomoże kolejnym osobom, które zainstalują lektora do tej gry.
+        Opiekun projektu przejrzy zgłoszenie i zdecyduje, czy wpisać grę do listy sprawdzonych.
+
+        **To zgłoszenie jest publiczne** — widać je pod Twoim loginem GitHub.
+        Nie wklejaj: klucza pilota z iPhone'a, ścieżek z dysku, dziennika programu ani zrzutów ekranu z pulpitem.
+        Paczek lektora też nie załączaj — należą do ich autorów.
+  - type: input
+    id: gra
+    attributes:
+      label: "Gra (nazwa paczki)"
+      description: "Tak, jak nazywa się kafelek w programie."
+      placeholder: "Grand Theft Auto V"
+    validations:
+      required: true
+  - type: input
+    id: wersja
+    attributes:
+      label: "Wersja paczki"
+      description: "Z pola version w manifest.json paczki (AI odczyta ją za Ciebie)."
+      placeholder: "1.0.1"
+    validations:
+      required: true
+  - type: input
+    id: id
+    attributes:
+      label: "Id paczki"
+      description: "Z pola id w manifest.json paczki — po nim program rozpoznaje grę. Nie wiesz? Zostaw puste."
+      placeholder: "d18239c6-8885-487b-b5a6-722ff60c2c1f"
+    validations:
+      required: false
+  - type: dropdown
+    id: wynik
+    attributes:
+      label: "Wynik próby"
+      options:
+        - "Działa — lektor czyta kwestie"
+        - "Gubi kwestie — czyta tylko część"
+        - "Nie czyta — lektor milczy"
+    validations:
+      required: true
+  - type: dropdown
+    id: obraz
+    attributes:
+      label: "Skąd program brał obraz gry"
+      options:
+        - "Xbox — gra zdalna na Macu"
+        - "Xbox — karta przechwytująca"
+        - "Inna konsola albo inne źródło (opisz w uwagach)"
+    validations:
+      required: true
+  - type: textarea
+    id: napisy
+    attributes:
+      label: "Ustawienia napisów w grze, które zadziałały"
+      description: "Np. napisy włączone, rozmiar mały, tło 100 %, język napisów. Przy wyniku „Nie czyta” — jakie ustawienia próbowałeś."
+      placeholder: "Napisy włączone, rozmiar mały, tło napisów 100 %"
+    validations:
+      required: true
+  - type: textarea
+    id: uwagi
+    attributes:
+      label: "Uwagi (opcjonalnie)"
+      description: "Co jeszcze warto wiedzieć: które sceny gubią kwestie, co pomogło. Krótko i bez danych osobowych."
+    validations:
+      required: false
+  - type: checkboxes
+    id: zgoda
+    attributes:
+      label: "Zanim wyślesz"
+      options:
+        - label: "Sprawdziłem treść: nie ma w niej klucza pilota, ścieżek z dysku, dziennika ani danych osobowych."
+          required: true

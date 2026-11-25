@@ -1,0 +1,29 @@
+# Checks a Pull Request that adds a game to sprawdzone.json (or touches the report form / script):
+# the file must stay valid JSON in the expected format — the panel would silently drop every badge otherwise.
+# Read-only token, no secrets: safe for Pull Requests from forks.
+name: Sprawdź zgłoszenie gry
+on:
+  pull_request:
+    paths:
+      - "sprawdzone.json"
+      - "zgloszenie.py"
+      - "testy/test_zgloszenie.py"
+      - ".github/ISSUE_TEMPLATE/**"
+permissions:
+  contents: read
+jobs:
+  sprawdz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # the checker comes from the target branch, so a PR that changes only sprawdzone.json cannot loosen the
+      # test that judges it. A PR that edits THIS workflow could still drop the step — green means something only
+      # for a PR touching sprawdzone.json alone (the maintainer's rule: one line, one file).
+      - run: git checkout "origin/${{ github.base_ref }}" -- zgloszenie.py testy/test_zgloszenie.py .github/ISSUE_TEMPLATE
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyyaml
+      - run: python -m unittest testy/test_zgloszenie.py -v
