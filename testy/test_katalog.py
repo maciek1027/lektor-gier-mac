@@ -8,7 +8,8 @@ stop / sample / reload) refuses instead of queueing · a game change answers a w
 gets no line and no clip of the old game · missing disk ≠ empty folder ≠ broken pack · tile states from test
 records, not from the bare list of unhandled fields · cover theme contrast ≥ 4.5:1 · new routes need the pilot key
 from the network · temporary folders of the reader are removed on close · "Wyłącz program" ends the server process
-even while a panel window keeps polling.
+even while a panel window keeps polling · the remote-play console (Xbox in Chrome / PS Remote Play app) comes from the
+settings (also for the phone's Graj), an old file means Xbox, PS5 without the app is refused before anything opens.
 Optional checks on the real packs run only when LEKTOR_TEST_PACZKI points at a folder with them.
 """
 import http.client
@@ -24,6 +25,7 @@ import threading
 import time
 import unittest
 import zipfile
+from unittest import mock
 
 TU = os.path.dirname(os.path.abspath(__file__))
 KOD = os.path.dirname(TU)
@@ -173,12 +175,13 @@ class TestUstawienia(unittest.TestCase):
         f = os.path.join(k, "paczki")
         zrob_paczke(f, "grand-theft-auto-vi-v4.zip", "Grand Theft Auto VI")
         for tresc in ('{"glosnosc": "glosno", "profil": "x", "kamera": true, "gra": "../../etc", "klucz": "krotki",'
-                      ' "wyglad": 5, "urzadzenie": 7}', "[1, 2]", "{nie json"):
+                      ' "wyglad": 5, "urzadzenie": 7, "konsola": "ps4"}', '{"konsola": 5}', "[1, 2]", "{nie json"):
             with open(os.path.join(k, "ustawienia.json"), "w") as fh:
                 fh.write(tresc)
             st = stan(k, f)
-            self.assertEqual({p: st.ust[p] for p in ("glosnosc", "profil", "kamera", "wyglad", "urzadzenie")},
-                             {"glosnosc": 1.0, "profil": "tv_mac", "kamera": 0, "wyglad": "motyw", "urzadzenie": ""})
+            self.assertEqual({p: st.ust[p] for p in ("glosnosc", "profil", "kamera", "wyglad", "urzadzenie", "konsola")},
+                             {"glosnosc": 1.0, "profil": "tv_mac", "kamera": 0, "wyglad": "motyw", "urzadzenie": "",
+                              "konsola": "xbox"})
             self.assertEqual(st.gra, "grand-theft-auto-vi-v4")  # the bad "gra" was dropped, the default game loads
             self.assertRegex(st.klucz, r"^[A-Za-z0-9_-]{12,64}$")
 
@@ -541,7 +544,7 @@ class TestTrasy(unittest.TestCase):
         cls.srv.zamknij()
 
     NOWE = (("GET", "/api/katalog"), ("GET", "/api/okladka/aaa"), ("POST", "/api/probka"), ("POST", "/api/paczka"),
-            ("POST", "/api/stop"), ("POST", "/api/start"), ("POST", "/api/wylacz"))
+            ("POST", "/api/stop"), ("POST", "/api/start"), ("POST", "/api/wylacz"), ("POST", "/api/gra-zdalna"))
 
     def test_nowe_trasy_z_sieci_bez_klucza_403(self):
         for metoda, sciezka in self.NOWE:
@@ -647,6 +650,143 @@ class TestWylacz(unittest.TestCase):
             if proc.poll() is None:
                 proc.kill()
                 proc.wait()
+
+
+class _BezZgodyEkranu:
+    """Stand-in for Quartz: no screen-recording permission, and counts asks (a test must never raise the macOS prompt)."""
+    def __init__(self):
+        self.prosby = 0
+
+    def CGPreflightScreenCaptureAccess(self):
+        return False
+
+    def CGRequestScreenCaptureAccess(self):
+        self.prosby += 1
+
+
+class _ZgodaEkranu(_BezZgodyEkranu):
+    def CGPreflightScreenCaptureAccess(self):
+        return True
+
+
+class _Zrodlo:
+    zamkniete = 0
+
+    def __init__(self, *a):
+        pass
+
+    def zamknij(self):
+        _Zrodlo.zamkniete += 1
+
+
+class TestKonsola(unittest.TestCase):
+    """Remote play from Xbox (Chrome) or PlayStation 5 (Sony's PS Remote Play app). Nothing is opened on this Mac:
+    every `open` goes to a recorder, and the PS app is looked for in a temporary folder."""
+
+    def setUp(self):
+        self.k = nowy_katalog("konsola")
+        f = os.path.join(self.k, "paczki")
+        zrob_paczke(f, "aaa.zip", "Gra A", znacznik="A")
+        self.plik = zapisz_ustawienia(self.k, {"klucz": KLUCZ, "gra": "aaa"})  # an old file: no "konsola"
+        self.st = stan(self.k, f, ustawienia=self.plik)
+        self.aplikacja = os.path.join(self.k, "Aplikacje", "PS Remote Play.app")
+        self.popen = mock.patch.object(S.subprocess, "Popen")
+        self.wywolania = self.popen.start()
+        self.addCleanup(self.popen.stop)
+        lista = mock.patch.object(S, "PS_REMOTE_PLAY", [self.aplikacja])
+        lista.start()
+        self.addCleanup(lista.stop)
+
+    def otwarte(self):
+        return [c.args[0] for c in self.wywolania.call_args_list]
+
+    def zainstaluj_ps(self):
+        os.makedirs(self.aplikacja)
+
+    def test_stary_plik_bez_konsoli_to_xbox_i_ta_sama_komenda_co_dotad(self):
+        self.assertEqual(self.st.ust["konsola"], "xbox")
+        self.assertIsNone(S.otworz_gre_zdalna(self.st.ust["konsola"]))
+        self.assertEqual(self.otwarte(), [["open", "-a", "Google Chrome", S.XBOX]])
+
+    def test_playstation_otwiera_aplikacje_sony_nie_xbox(self):
+        self.zainstaluj_ps()
+        self.assertIsNone(S.otworz_gre_zdalna("playstation"))
+        self.assertEqual(self.otwarte(), [["open", "-a", self.aplikacja]])
+
+    def test_playstation_bez_aplikacji_to_komunikat_co_dlaczego_jak(self):
+        blad = S.otworz_gre_zdalna("playstation")
+        self.assertEqual(blad, S.PS_BRAK)
+        for slowo in ("Nie widzę aplikacji PS Remote Play", "Bez niej Mac nie widzi obrazu", "Pobierz", "Graj jeszcze raz"):
+            self.assertIn(slowo, blad)
+        self.assertEqual(self.otwarte(), [], "no silent attempt to open a missing app")
+
+    def test_graj_ps5_bez_aplikacji_odmawia_zanim_cokolwiek_otworzy(self):
+        self.st.ust["konsola"] = "playstation"
+        quartz = _BezZgodyEkranu()
+        with mock.patch.object(S, "Quartz", quartz):
+            r = self.st.start("ekran", "tv_mac", "", None, 0, True, "aaa")
+        self.assertEqual((r["ok"], r["blad"]), (False, S.PS_BRAK))  # this reason, not the missing screen permission
+        self.assertIsNone(self.st.sesja)
+        self.assertEqual((self.otwarte(), quartz.prosby), ([], 0), "nothing opened, no macOS permission prompt")
+
+    def test_szybki_restart_nie_sprawdza_ani_nie_otwiera_aplikacji(self):
+        self.st.ust["konsola"] = "playstation"  # no app; a quick restart (new device/profile) opens nothing anyway
+        with mock.patch.object(S, "Quartz", _BezZgodyEkranu()):
+            r = self.st.start("ekran", "tv_mac", "", None, 0, False, "aaa")
+        self.assertTrue(r.get("zgoda"), r)  # it went on to the screen permission, i.e. was not refused for the app
+        self.assertEqual(self.otwarte(), [])
+
+    def graj_z_pilota(self):
+        """Graj from the phone: through the network with the key and WITHOUT a console field (the phone sends none).
+        The voice fails on purpose (after the opening), so no reader starts on this Mac."""
+        srv = _Serwer(self.st)
+        self.addCleanup(srv.zamknij)
+        with mock.patch.object(S, "Quartz", _ZgodaEkranu()), mock.patch.object(S.L, "ZrodloEkran", _Zrodlo), \
+                mock.patch.object(self.st, "_glos", side_effect=RuntimeError("bez dźwięku w teście")):
+            kod, r = srv.json("POST", "/api/start", host="macbook-testowy.local", klucz=KLUCZ,
+                              body={"zrodlo": "ekran", "profil": "tv_mac", "gra": "aaa"})
+        self.assertEqual(kod, 200)
+        return r
+
+    def test_pilot_graj_otwiera_konsole_z_ustawien(self):
+        self.zainstaluj_ps()
+        self.st.ust["konsola"] = "playstation"
+        r = self.graj_z_pilota()
+        self.assertIn("bez dźwięku w teście", r["blad"])  # it got past the opening
+        self.assertEqual(self.otwarte(), [["open", "-a", self.aplikacja]])
+        self.st.ust["konsola"] = "xbox"
+        self.wywolania.reset_mock()
+        self.graj_z_pilota()
+        self.assertEqual(self.otwarte(), [["open", "-a", "Google Chrome", S.XBOX]])
+
+    def test_pilot_graj_ps5_bez_aplikacji_dostaje_komunikat(self):
+        self.st.ust["konsola"] = "playstation"
+        r = self.graj_z_pilota()
+        self.assertEqual((r["ok"], r["blad"]), (False, S.PS_BRAK))
+        self.assertEqual(self.otwarte(), [])
+
+    def test_wybor_konsoli_zapisany_w_stanie_i_pliku(self):
+        srv = _Serwer(self.st)
+        self.addCleanup(srv.zamknij)
+        for wartosc, oczekiwana in (("playstation", "playstation"), ("ps4", "playstation"), ("xbox", "xbox")):
+            kod, _ = srv.json("POST", "/api/ustawienia", body={"konsola": wartosc})
+            self.assertEqual(kod, 200)
+            _, stan_ = srv.json("GET", "/api/stan")
+            self.assertEqual(stan_["ustawienia"]["konsola"], oczekiwana, wartosc)
+            with open(self.plik) as fh:
+                self.assertEqual(json.load(fh)["konsola"], oczekiwana, wartosc)
+
+    def test_otworz_ponownie_wg_konsoli(self):
+        srv = _Serwer(self.st)
+        self.addCleanup(srv.zamknij)
+        self.st.ust["konsola"] = "playstation"
+        for trasa in ("/api/gra-zdalna", "/api/xbox"):  # /api/xbox = the old name: an old open page keeps working
+            _, r = srv.json("POST", trasa)
+            self.assertEqual((r["ok"], r["blad"]), (False, S.PS_BRAK), trasa)
+        self.assertEqual(self.otwarte(), [])
+        self.st.ust["konsola"] = "xbox"
+        _, r = srv.json("POST", "/api/gra-zdalna")
+        self.assertEqual((r["ok"], self.otwarte()), (True, [["open", "-a", "Google Chrome", S.XBOX]]))
 
 
 class TestSprzatanie(unittest.TestCase):

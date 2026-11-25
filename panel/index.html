@@ -361,12 +361,18 @@ body:not(.tel) .telOnly{display:none!important}
     <div style="margin-top:12px">
       <div class="row"><label>Skąd obraz gry</label>
         <div class="radios">
-          <label><input type="radio" name="src" value="ekran">Gra zdalna w Chrome</label>
+          <label><input type="radio" name="src" value="ekran">Gra zdalna na Macu</label>
           <label><input type="radio" name="src" value="kamera">Karta przechwytująca</label>
         </div>
       </div>
+      <div class="row" id="konsRow"><label>Konsola</label>
+        <div class="radios">
+          <label><input type="radio" name="kons" value="xbox">Xbox — gra zdalna w Chrome</label>
+          <label><input type="radio" name="kons" value="playstation">PlayStation 5 — aplikacja PS Remote Play</label>
+        </div>
+      </div>
       <div class="row" id="camRow"><label for="cam">Numer karty</label><select id="cam"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-      <div class="row"><label></label><button class="btn small" onclick="api('/api/xbox')">Otwórz Xbox ponownie</button><button class="btn small" onclick="api('/api/zgoda-ekranu')">Zgoda na nagrywanie ekranu</button></div>
+      <div class="row"><label></label><button class="btn small" id="otworzZdalna">Otwórz Xbox ponownie</button><button class="btn small" onclick="api('/api/zgoda-ekranu')">Zgoda na nagrywanie ekranu</button></div>
       <div class="log" id="log"></div>
     </div>
   </details>
@@ -392,19 +398,29 @@ const TEL=!["127.0.0.1","localhost","[::1]"].includes(location.hostname);
 const Q=new URLSearchParams(location.search), K=Q.get("k")||"", CID=Math.random().toString(36).slice(2,12);
 const WERSJA="__WERSJA__", BEZ_WERSJI="__WER"+"SJA__";  // the server writes the page version into the first one
 if(TEL) document.body.classList.add("tel");
-const HINT={
- tv_mac:"W Chrome wycisz kartę Xbox: prawy klik na karcie → „Wycisz witrynę”. Grę słyszysz z telewizora, lektora z Maca.",
- tv_glosnik:"Połącz głośnik Bluetooth z Makiem i wybierz go niżej. W Chrome wycisz kartę Xbox (prawy klik na karcie → „Wycisz witrynę”).",
- sluchawki:"Połącz słuchawki z Makiem. W Chrome włącz dźwięk karty Xbox (prawy klik → „Wyłącz wyciszenie witryny”) i wycisz telewizor. Dźwięk gry ze strumienia może być lekko spóźniony względem obrazu na TV.",
- iphone: TEL ? "Stuknij „Włącz dźwięk” niżej. Lektor gra też przy zablokowanym ekranie — tylko nie zamykaj pilota (nie przesuwaj go w górę w przełączniku aplikacji)."
-             : "Lektor zagra z iPhone'a: otwórz pilota w telefonie (kod QR na dole) i stuknij „Włącz dźwięk w tym iPhonie”. W Chrome wycisz kartę Xbox."};
+// What to do with the game sound depends on the console of the remote play (PS5: Sony's app, not Chrome — not yet tried
+// on a PS5, so its hints say so). The capture card keeps the Xbox wording it always had.
+const KONSOLA_NAZWA={xbox:"Xbox",playstation:"PS Remote Play"};
+const DZWIEK_GRY={
+ xbox:{wycisz:"W Chrome wycisz kartę Xbox: prawy klik na karcie → „Wycisz witrynę”.",
+       sluchawki:"W Chrome włącz dźwięk karty Xbox (prawy klik → „Wyłącz wyciszenie witryny”) i wycisz telewizor. Dźwięk gry ze strumienia może być lekko spóźniony względem obrazu na TV."},
+ playstation:{wycisz:"Obraz z PS5 daje aplikacja PS Remote Play — jak wyciszyć w niej dźwięk gry na Macu, na PS5 jeszcze nie sprawdziliśmy.",
+       sluchawki:"Dźwięk gry z aplikacji PS Remote Play usłyszysz w słuchawkach razem z lektorem; wycisz telewizor. Na PS5 jeszcze tego nie sprawdziliśmy."}};
+function hintTekst(p){
+  const d=DZWIEK_GRY[zrodlo==="kamera"?"xbox":konsola]||DZWIEK_GRY.xbox;
+  return {tv_mac:d.wycisz+" Grę słyszysz z telewizora, lektora z Maca.",
+   tv_glosnik:"Połącz głośnik Bluetooth z Makiem i wybierz go niżej. "+d.wycisz,
+   sluchawki:"Połącz słuchawki z Makiem. "+d.sluchawki,
+   iphone: TEL ? "Stuknij „Włącz dźwięk” niżej. Lektor gra też przy zablokowanym ekranie — tylko nie zamykaj pilota (nie przesuwaj go w górę w przełączniku aplikacji)."
+               : "Lektor zagra z iPhone'a: otwórz pilota w telefonie (kod QR na dole) i stuknij „Włącz dźwięk w tym iPhonie”. "+d.wycisz}[p];
+}
 const PROFIL_NAZWA={tv_mac:"TV + Mac",tv_glosnik:"TV + głośnik",sluchawki:"Słuchawki",iphone:"iPhone"};
 const STALE={klasyczny:{akcent:"#0e7c86",akcent2:"#1c6fb5",tlo:"#121318"},grafit:{akcent:"#476af5",akcent2:"#7950f2",tlo:"#15171c"},
  granat:{akcent:"#e12567",akcent2:"#ae6500",tlo:"#0d1730"}};
 const DEV_RE={tv_mac:/macbook|głośniki|built-in|wbudowan/i, sluchawki:/airpods|słuchawk|headphone|buds|beats|wh-|bose/i,
  wirtualne:/teams|zoom|blackhole|loopback|soundflower|aggregate|multi-output|wielowyjściow|agregat|virtual|wirtualn/i};
 let st=null, kat=null, katNr=-1, widok=null, graWidok=null, devs=[], profil="tv_mac", zrodlo="ekran", devTouched=false,
-    volTimer=null, volDrag=0, profTouched=0, qrCo="local", wygladTouched=0;
+    volTimer=null, volDrag=0, profTouched=0, qrCo="local", wygladTouched=0, konsola="xbox", konsTouched=0;
 const $=id=>document.getElementById(id);
 const H=()=>TEL?{"X-Lektor-Klucz":K}:{};
 const z=url=>url+(url.includes("?")?"&":"?")+"c="+CID;
@@ -646,7 +662,7 @@ function renderGra(){
   play.classList.toggle("stop",czyta&&ta); play.disabled=!gotowa&&!(czyta&&ta);
   play.querySelector("svg").innerHTML=czyta&&ta?'<rect x="6" y="6" width="12" height="12" rx="2"/>':'<path d="M7 4v16l13-8z"/>';
   $("playTxt").textContent=czyta&&ta?(st.zrodlo==="probka"?"Zatrzymaj próbkę":TEL?"Zatrzymaj":"Zatrzymaj lektora")
-    :inna?"Graj w tę grę (zatrzyma "+(st.gra&&st.gra.nazwa||"lektora")+")":TEL?"Graj":(zrodlo==="kamera"?"Graj — włącz lektora (karta)":"Graj — otwórz Xbox i włącz lektora");
+    :inna?"Graj w tę grę (zatrzyma "+(st.gra&&st.gra.nazwa||"lektora")+")":TEL?"Graj":(zrodlo==="kamera"?"Graj — włącz lektora (karta)":"Graj — otwórz "+KONSOLA_NAZWA[konsola]+" i włącz lektora");
   $("probka").disabled=!gotowa; $("probka").style.display=czyta&&ta?"none":"";
   $("demo").style.display=czyta||!g.demo?"none":"";
   const L=st.kwestie||[]; $("linesEmpty").style.display=L.length?"none":"";
@@ -681,8 +697,8 @@ function setVol(){  // the slider shows the volume of the profile on screen (pho
   $("volHint").textContent=profil==="iphone"?VOL_HINT.iphone:(TEL?VOL_HINT.mac_tel:"");
   if(st&&!volDrag){ const v=Math.round((st.ustawienia[volKey()]??1)*100); $("vol").value=v; $("volTxt").textContent=v+"%"; }
 }
-function setHint(){ $("hint").innerHTML='<span>💡</span><span>'+HINT[profil]+'</span>'; }
-function restartJesliCzyta(){  // the voice moves to the new device/profile right away (quick restart, no new Xbox tab)
+function setHint(){ $("hint").innerHTML='<span>💡</span><span>'+hintTekst(profil)+'</span>'; }
+function restartJesliCzyta(){  // the voice moves to the new device/profile right away (quick restart, no new Xbox tab / PS app)
   if(st&&st.dziala&&!["demo","probka"].includes(st.zrodlo))
     return api("/api/start",{zrodlo:st.zrodlo, profil, urzadzenie:$("dev").value, glosnosc:$("vol").value/100, kamera:+$("cam").value, otworz_xbox:false,
       gra:st.gra&&st.gra.id}).then(tick);  // the same game (the server keeps it anyway; said explicitly)
@@ -693,7 +709,12 @@ async function setProfil(p,save){
   devTouched=false; setHint(); setVol(); pickDevice(); renderGra();
   if(save){ profTouched=Date.now(); await api("/api/ustawienia",{profil:p,urzadzenie:$("dev").value}); if(bylo!==p) restartJesliCzyta(); }
 }
-function setZrodlo(z){ zrodlo=z; document.querySelectorAll('input[name=src]').forEach(r=>r.checked=r.value===z); $("camRow").style.display=z==="kamera"?"flex":"none"; }
+function setZrodlo(z){ zrodlo=z; document.querySelectorAll('input[name=src]').forEach(r=>r.checked=r.value===z); $("camRow").style.display=z==="kamera"?"flex":"none";
+  $("konsRow").style.display=z==="kamera"?"none":"flex"; setHint(); }
+function setKonsola(k){  // console of the remote play: labels and hints follow it on the Mac and on the phone
+  konsola=KONSOLA_NAZWA[k]?k:"xbox"; document.querySelectorAll('input[name=kons]').forEach(r=>r.checked=r.value===konsola);
+  $("otworzZdalna").textContent="Otwórz "+KONSOLA_NAZWA[konsola]+" ponownie"; setHint();
+}
 function fmt(s){return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0");}
 function render(){
   if(!st) return; const pill=$("pill");
@@ -711,6 +732,7 @@ function render(){
   // the Mac panel and the phone follow each other's volume, profile and look (not while this screen is being changed)
   if(!volDrag){ const v=Math.round((st.ustawienia[volKey()]??1)*100); if(+$("vol").value!==v){ $("vol").value=v; $("volTxt").textContent=v+"%"; } }
   if(st.ustawienia.profil!==profil&&Date.now()-profTouched>3000) setProfil(st.ustawienia.profil,false);
+  if((st.ustawienia.konsola||"xbox")!==konsola&&Date.now()-konsTouched>3000) setKonsola(st.ustawienia.konsola);
   $("log").textContent=(st.komunikaty||[]).join("\n");
   if(st.pilot) renderPilot(st.pilot);
   if(TEL) renderTel();
@@ -745,6 +767,8 @@ async function tick(){
 
 document.querySelectorAll(".prof").forEach(b=>b.onclick=()=>setProfil(b.dataset.p,true));
 document.querySelectorAll('input[name=src]').forEach(r=>r.onchange=()=>{setZrodlo(r.value);api("/api/ustawienia",{zrodlo:r.value});});
+document.querySelectorAll('input[name=kons]').forEach(r=>r.onchange=()=>{konsTouched=Date.now();setKonsola(r.value);api("/api/ustawienia",{konsola:r.value});renderGra();});
+$("otworzZdalna").onclick=async()=>{ const r=await api("/api/gra-zdalna"); if(r&&r.ok===false) alert(r.blad); };
 $("dev").onchange=async()=>{ devTouched=true; await api("/api/ustawienia",{urzadzenie:$("dev").value}); restartJesliCzyta(); };
 function zmienVol(v){  // slider, + / − (10 % a tap) and reset all go through here: heard at once, saved shortly after
   v=Math.max(0,Math.min(200,Math.round(v))); volDrag=Date.now(); $("vol").value=v; $("volTxt").textContent=v+"%";
@@ -908,7 +932,7 @@ document.addEventListener("visibilitychange",()=>{
     bezpieczny:window.isSecureContext,wakeLock:"wakeLock" in navigator,adres:location.hostname,ua:navigator.userAgent.slice(0,120)}).catch(()=>{});
   await tick();
   if(st){ const u=st.ustawienia; $("cam").value=u.kamera||0;
-    setZrodlo(u.zrodlo==="kamera"?"kamera":"ekran"); setProfil(u.profil||"tv_mac",false); }
+    setKonsola(u.konsola); setZrodlo(u.zrodlo==="kamera"?"kamera":"ekran"); setProfil(u.profil||"tv_mac",false); }
   await wczytajKatalog();
   // The program always starts on "Moje gry" (the Dock icon and the iPhone icon open an address without an anchor), also
   // with a game chosen or the reader running — the catalogue shows both (✓ wybrana / ▶ czyta, the Stop bar). An address

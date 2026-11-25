@@ -11,7 +11,8 @@ i **włącza grę / napisy w grze**. Paczki lektora wybiera i pobiera człowiek 
 ## Co to jest (żebyś rozumiał, co instalujesz)
 
 Polski lektor do gier na Macu, ułożony jak katalog: każda paczka lektora w folderze gier to kafelek z okładką.
-Pierwsza gra sprawdzona na żywo na Xboxie: GTA VI. Czytnik co ~250 ms robi zrzut obszaru napisów (ekran Maca z grą zdalną Xboxa
+Pierwsza gra sprawdzona na żywo na Xboxie: GTA VI; **na PlayStation 5 program nie był jeszcze sprawdzony**. Czytnik co ~250 ms
+robi zrzut obszaru napisów (ekran Maca z grą zdalną konsoli — Xbox w Chrome albo PlayStation 5 w aplikacji Sony PS Remote Play —
 albo obraz z karty przechwytującej), rozpoznaje tekst wbudowanym OCR macOS (Vision, `pl-PL`), dopasowuje go do
 `subtitles.json` z paczki wybranej gry (format społeczności GameReader 2.0) i odtwarza gotowe nagranie `audio/<id>.opus` z tej paczki.
 Nic nie jest syntezowane na żywo. Panel sterowania to strona HTML z małego serwera na Macu; iPhone może być pilotem
@@ -64,22 +65,36 @@ i głośnikiem lektora.
 | pierwsze uruchomienie aplikacji | „Lektor Gier na konsoli” chce dostęp do folderu (np. Dokumenty / Pobrane) | Zezwól |
 | aplikacja steruje Terminalem | „Lektor Gier na konsoli” chce sterować „Terminal” | OK |
 | karta przechwytująca | „Terminal” chce dostęp do kamery | Zezwól (karta udaje kamerę) |
+| PS5: pierwsze uruchomienie PS Remote Play | okienka aplikacji Sony (logowanie do PlayStation Network, łączenie z konsolą) | prowadzi aplikacja Sony; loguje się użytkownik — Ty nie wpisujesz hasła |
+| PS5 przez kartę przechwytującą | (to nie okienko macOS) karta pokazuje czarny obraz | na konsoli: Ustawienia → System → HDMI → **Włącz HDCP** — wyłącz (robi użytkownik) |
 | pilot w iPhonie przy włączonej zaporze | „Python” chce przyjmować połączenia przychodzące | Zezwól |
 
 Zgodę na nagrywanie ekranu dostaje **Terminal**, bo to on uruchamia serwer (`start-panel.command`). Brak zgody
 widać w panelu jako żółty pasek z przyciskiem „Otwórz ustawienia”. Nie zmieniaj ustawień systemu za użytkownika.
 
-## Ustawienia w grze i na Xboxie (powiedz użytkownikowi)
+## Ustawienia w grze i na konsoli (powiedz użytkownikowi)
 
 - Napisy w grze **włączone**; rozmiar i tło według autora paczki — ekran gry w panelu pokazuje jego słowa („Ustaw
   w grze”). Przykład GTA VI: rozmiar **mały** (obszar napisów w paczce jest dobrany pod mały rozmiar), autorzy zalecają
   tło napisów na 100 %. U autora programu OCR działał także bez tła — gdy lektor gubi kwestie na jasnych scenach,
   każ włączyć tło.
-- Gra zdalna: Chrome → https://www.xbox.com/pl-PL/play/consoles, okno gry na **pełnym ekranie** Maca (czytnik
+- Konsola gry zdalnej: panel → Ustawienia → Więcej opcji → **Konsola** (Xbox / PlayStation 5); w `ustawienia.json`
+  pole `konsola` (`xbox` — domyślnie, także dla starego pliku bez tego pola — albo `playstation`). „Graj” (na Macu
+  i z pilota) otwiera grę zdalną konsoli z ustawień; karta przechwytująca nie zależy od tego pola.
+- Gra zdalna z Xboxa: Chrome → https://www.xbox.com/pl-PL/play/consoles, okno gry na **pełnym ekranie** Maca (czytnik
   zakłada obraz 16:9 na całym ekranie).
-- Dźwięk gry na telewizorze przy grze zdalnej: Xbox przerzuca wtedy dźwięk na Maca. Pomaga: Xbox → Ustawienia →
+- Dźwięk gry na telewizorze przy grze zdalnej z Xboxa: Xbox przerzuca wtedy dźwięk na Maca. Pomaga: Xbox → Ustawienia →
   Ogólne → Głośność i wyjście audio → Dodatkowe opcje → **odznacz** „Wycisz dźwięk głośnika, gdy podłączony jest
   zestaw słuchawkowy”; w Chrome wycisz kartę Xbox (prawy klik → „Wycisz witrynę”).
+- Gra zdalna z PlayStation 5: **nie Chrome**, tylko aplikacja Sony **PS Remote Play** (program szuka
+  `/Applications/PS Remote Play.app` albo `~/Applications/PS Remote Play.app`). Brak aplikacji → „Graj” odmawia
+  z komunikatem; pobiera i instaluje ją użytkownik ze strony Sony, łączy z konsolą i loguje się sam. Okno aplikacji
+  na **pełnym ekranie** Maca.
+- PS5 przez kartę przechwytującą: wymaga wyłączenia HDCP na konsoli (Ustawienia → System → HDMI → Włącz HDCP:
+  wyłącz) — inaczej karta widzi czarny obraz. Z wyłączonym HDCP aplikacje z filmami na konsoli mogą nie działać.
+- **Uczciwie:** na PS5 program nie był sprawdzony — obszary napisów w paczkach robiono pod grę na PC. Gubi kwestie
+  albo milczy → najpierw pełny ekran i napisy w grze, potem podgląd obszaru (niżej, „Lektor milczy w grze”), a wynik
+  zbierz do cegiełki (`--obraz inne`).
 
 ## Pilot w iPhonie (opcjonalnie)
 
@@ -128,7 +143,8 @@ Zgłoszenie jest publiczne na GitHubie i widać je pod Twoim loginem; opiekun pr
 czy dopisać grę do listy sprawdzonych. Potrzebne jest konto GitHub.” Bez konta albo bez „tak” → koniec, nic nie wysyłasz.
 
 **CO zebrać:** wynik (`dziala` / `gubi` / `nie_czyta`), źródło obrazu (`xbox` = gra zdalna z Xboxa, `karta` = Xbox
-przez kartę przechwytującą, `inne` = inna konsola albo inne źródło), ustawienia napisów w grze, które zadziałały
+przez kartę przechwytującą, `inne` = inna konsola albo inne źródło — PS5 też tu, z uwagą „PS5, PS Remote Play” albo
+„PS5, karta”), ustawienia napisów w grze, które zadziałały
 (zapytaj użytkownika jego słowami) i krótkie uwagi. Nazwę, wersję i id paczki skrypt czyta sam z `manifest.json` w ZIP-ie.
 Słowa użytkownika podawaj w **pojedynczych** cudzysłowach (apostrof w tekście → `'\''`) — w podwójnych powłoka
 wykona np. `$(...)` z jego tekstu:

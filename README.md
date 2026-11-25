@@ -1,11 +1,13 @@
 # Lektor Gier na konsoli — polski lektor do gier na Macu
 
-Grasz na Xboxie, a obraz masz na telewizorze. Mac w tym czasie „patrzy” na napisy w grze i od razu odtwarza je
+Grasz na konsoli (Xbox albo PlayStation 5), a obraz masz na telewizorze. Mac w tym czasie „patrzy” na napisy w grze i od razu odtwarza je
 **polskim lektorem**: bohaterowie mówią po angielsku, a Ty słyszysz polskiego lektora jak w filmie.
 
 Program działa jak **katalog gier**: każda gra, do której masz paczkę lektora społeczności
 [GameReader](https://gamereader.pl), ma w nim swój kafelek z okładką. Wybierasz grę, klikasz „Graj” — i tyle.
 Na żywo na Xboxie sprawdzona jest na razie jedna gra (GTA VI); kilka innych przeszło próbę na nagraniu gry.
+**Na PlayStation 5 program nie był jeszcze sprawdzony** — działa tą samą drogą, ale nikt go tam jeszcze nie próbował
+(szczegóły w „Ustawieniach w grze i na konsoli”).
 Paczki mają wspólny format, ale nie każda zadziała tak samo — część używa ustawień, których ten program jeszcze
 nie stosuje, a niektóre nie mają obszaru napisów. Przy każdej grze panel mówi wprost, jak bardzo jest sprawdzona.
 
@@ -28,7 +30,8 @@ Lektor gra z głośników Maca, z głośnika Bluetooth, ze słuchawek albo z **i
 
 ## Jak to działa (po ludzku)
 
-1. Na Macu w przeglądarce Chrome działa **gra zdalna Xboxa** (xbox.com) — tylko po to, żeby Mac widział obraz gry.
+1. Na Macu działa **gra zdalna** Twojej konsoli — Xbox w przeglądarce Chrome (xbox.com), PlayStation 5 w aplikacji
+   Sony **PS Remote Play** — tylko po to, żeby Mac widział obraz gry.
    Grasz normalnie na telewizorze, bez opóźnień.
 2. Kilka razy na sekundę program odczytuje napis z ekranu (wbudowane w macOS rozpoznawanie tekstu).
 3. Szuka tego zdania w **paczce lektora** wybranej gry — gotowych polskich nagrań przygotowanych przez społeczność
@@ -39,7 +42,8 @@ Nic nie jest wysyłane do internetu: wszystko dzieje się na Twoim Macu.
 ## Czego potrzebujesz
 
 - Maca (testowane na MacBooku Air M4 z nowym macOS) i przeglądarki **Google Chrome**,
-- Xboxa z grą zdalną (albo kartę przechwytującą obraz z przelotem na telewizor),
+- Xboxa z grą zdalną albo PlayStation 5 z aplikacją **PS Remote Play** na Macu (albo kartę przechwytującą obraz
+  z przelotem na telewizor — przy PS5 trzeba na konsoli wyłączyć HDCP, patrz niżej),
 - **paczek lektora** do Twoich gier w formacie GameReader 2.0 — pobierasz je przyciskiem „Pobierz” w sekcji
   „Biblioteka GameReadera” programu (lista i pliki prosto z serwera [gamereader.pl](https://gamereader.pl)) albo sam
   z ich strony (nie ma ich w tym repo, bo należą do ich autorów),
@@ -98,7 +102,8 @@ uruchomieniu nowej możesz ją usunąć z Aplikacji i wyciągnąć jej ikonkę z
    wszystkich gier, do których masz paczkę lektora.
 2. **Wybierz grę** (kafelek z okładką). Na ekranie gry zobaczysz, jak bardzo jest sprawdzona, ramkę „Ustaw w grze”
    ze słowami autora paczki i przycisk **Graj**.
-3. **Kliknij Graj.** Program otworzy grę zdalną Xboxa w Chrome i zacznie czytać napisy. Kafelek gry dostaje znak
+3. **Kliknij Graj.** Program otworzy grę zdalną Twojej konsoli (Xbox w Chrome albo aplikację PS Remote Play)
+   i zacznie czytać napisy. Kafelek gry dostaje znak
    „▶ czyta”, a z każdego ekranu możesz lektora zatrzymać paskiem „Zatrzymaj lektora”.
 4. **Nowa gra:** sekcja **Biblioteka GameReadera** pod „Moje gry” (wszystkie paczki z gamereader.pl, z okładkami
    i szukajką) → „Pobierz · rozmiar” → pasek postępu (obok otwiera się biblioteka na stronie GameReadera — twórcy paczek
@@ -108,18 +113,29 @@ uruchomieniu nowej możesz ją usunąć z Aplikacji i wyciągnąć jej ikonkę z
    napisów są oznaczone „Na razie nie na Macu” (widać je, ale czytnik ich nie odczyta). Działa też z pilota w iPhonie
    (paczka trafia na Maca). Paczka spoza biblioteki: kafelek „＋ Dodaj grę” → wrzuć `.zip` do folderu gier.
 5. **Ustawienia** (przycisk z zębatką): jak słuchasz (TV + Mac, głośnik, słuchawki, iPhone), wzmocnienie lektora,
-   wygląd (Motyw gry, Okładki, Grafit, Granat) i kod QR pilota dla iPhone'a.
+   wygląd (Motyw gry, Okładki, Grafit, Granat) i kod QR pilota dla iPhone'a. W „Więcej opcji” wybierasz, skąd
+   program bierze obraz gry: gra zdalna (konsola **Xbox** albo **PlayStation 5**) albo karta przechwytująca.
 6. **Koniec grania:** „Wyłącz program” w prawym górnym rogu.
 
-## Ustawienia w grze
+## Ustawienia w grze i na konsoli
 
 - Napisy w grze **włączone**. Rozmiar i tło napisów zależą od paczki — ekran gry w panelu pokazuje słowa autora
   paczki („Ustaw w grze”). Przykład GTA VI: napisy **małe**, a gdy lektor gubi kwestie na jasnych scenach, włącz
   **tło napisów na 100 %**.
-- Gra zdalna w Chrome (`xbox.com/play`) na **pełnym ekranie** Maca.
-- **Dźwięk gry na telewizorze:** gdy włączasz grę zdalną, Xbox przerzuca dźwięk na Maca. Na Xboxie wejdź w
+- **Xbox:** gra zdalna w Chrome (`xbox.com/play`) na **pełnym ekranie** Maca.
+- **Dźwięk gry na telewizorze (Xbox):** gdy włączasz grę zdalną, Xbox przerzuca dźwięk na Maca. Na Xboxie wejdź w
   Ustawienia → Ogólne → Głośność i wyjście audio → Dodatkowe opcje i **odznacz** „Wycisz dźwięk głośnika, gdy
   podłączony jest zestaw słuchawkowy”. W Chrome wycisz kartę Xbox (prawy klik → „Wycisz witrynę”).
+- **PlayStation 5 — gra zdalna:** PS5 nie ma gry zdalnej w przeglądarce. Zainstaluj na Macu aplikację Sony
+  **PS Remote Play** (strona Sony, „PS Remote Play Mac”), połącz ją z konsolą i ustaw jej okno na **pełny ekran**.
+  W programie: Ustawienia → Więcej opcji → Konsola: **PlayStation 5**. „Graj” otworzy wtedy tę aplikację zamiast
+  Chrome; gdy jej nie ma, program powie, co zrobić.
+- **PlayStation 5 przez kartę przechwytującą:** PS5 szyfruje obraz na HDMI (HDCP) i karta widzi czarny ekran.
+  Na konsoli: Ustawienia → System → HDMI → **Włącz HDCP** — wyłącz. Z wyłączonym HDCP aplikacje z filmami na
+  konsoli mogą nie działać — po graniu włącz je z powrotem.
+- ⚠️ **Na PS5 nikt jeszcze tego nie sprawdził.** Obszar napisów w paczkach GameReadera przygotowano pod grę na
+  komputerze; obraz z PS Remote Play może mieć inne ramki albo inny rozmiar napisów. Gdy lektor gubi kwestie albo
+  milczy — daj znać (sekcja „Grasz w grę, której nie ma na liście sprawdzonych?”).
 
 ## Jak słuchać
 
@@ -150,8 +166,8 @@ i przygotuje zgłoszenie, a Ty decydujesz, czy je wysłać. Jak to zrobić samod
 
 ## Ważne
 
-- To niezależny projekt hobbystyczny. Nie jest powiązany z twórcami gier ani wydawcami, z Microsoftem (Xbox) ani
-  z twórcami GameReadera.
+- To niezależny projekt hobbystyczny. Nie jest powiązany z twórcami gier ani wydawcami, z Microsoftem (Xbox), z Sony
+  (PlayStation) ani z twórcami GameReadera.
 - Paczki lektora tworzy społeczność GameReadera — korzystaj z nich zgodnie z ich zasadami. Biblioteka w programie
   czyta publiczną listę paczek i pobiera paczki z serwera GameReadera (tego samego, z którego korzysta ich program);
   nie wysyła tam nic o Tobie poza ogólną nazwą programu. Paczki zapisuje bez zmian w Twoim folderze gier. Pobieranie

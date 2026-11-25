@@ -2,8 +2,8 @@
 """Lektor gier (dawniej GTA Lektor) — panel server (port 8797): the Mac panel on 127.0.0.1 and an iPhone remote over home Wi-Fi.
 
 Serves panel/index.html and a small JSON API that drives lektor.py: the game catalogue (voice packs in the packs
-folder), start/stop the reader, a short sample of a game, live volume, output device, Chrome with Xbox Remote Play,
-demo, and the GameReader library (their public list of voice packs; "Pobierz" downloads, checks and drops a pack
+folder), start/stop the reader, a short sample of a game, live volume, output device, the remote play of the chosen console
+(Xbox in Chrome or Sony's PS Remote Play app), demo, and the GameReader library (their public list of voice packs; "Pobierz" downloads, checks and drops a pack
 into the packs folder). Requests from this Mac (127.0.0.1) work as before; every request from the network needs the secret key `k`
 (kept in ustawienia.json, shown on the Mac panel as a QR code).
 Profile "iphone": matched lines are not played on the Mac but sent to the phone (long-poll), which plays them.
@@ -56,14 +56,23 @@ PAMIEC = os.environ.get("LEKTOR_PAMIEC") or os.path.expanduser("~/Library/Caches
 # our own record of which pack versions were tested and how (live on the Xbox / on a game recording)
 SPRAWDZONE = os.path.join(FOLDER, "sprawdzone.json")
 XBOX = "https://www.xbox.com/pl-PL/play/consoles"
+# PlayStation 5 has no remote play in a browser: Sony's own Mac app does it. Looked for where macOS installs apps
+# (a list, so the tests can point it at a temporary folder and never open anything on the user's Mac).
+PS_REMOTE_PLAY = ["/Applications/PS Remote Play.app", os.path.expanduser("~/Applications/PS Remote Play.app")]
+PS_BRAK = ("Nie widzę aplikacji PS Remote Play na tym Macu. Bez niej Mac nie widzi obrazu gry z PlayStation 5 "
+           "(PS5 nie ma gry zdalnej w przeglądarce, jak Xbox). Pobierz ją ze strony Sony (szukaj „PS Remote Play Mac”), "
+           "przeciągnij do folderu Aplikacje, połącz z konsolą i kliknij Graj jeszcze raz — albo w Ustawieniach → "
+           "Więcej opcji wybierz konsolę Xbox albo kartę przechwytującą.")
 USTAWIENIA_EKRANU = "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
 # glosnosc = the lektor on the Mac; glosnosc_iphone = extra boost on the phone, on top of its side buttons (which a web
 # page can neither read nor set) — kept apart so a 200 % phone boost never blasts the Mac speakers.
 # gra = catalogue id of the chosen game (pack file name); wyglad = panel background (game theme or a fixed one)
+# konsola = which console the remote play (zrodlo "ekran") comes from; an old settings file means Xbox
 DOMYSLNE = {"profil": "tv_mac", "urzadzenie": "", "glosnosc": 1.0, "glosnosc_iphone": 1.0, "zrodlo": "ekran", "kamera": 0,
-            "gra": None, "wyglad": "motyw"}
+            "gra": None, "wyglad": "motyw", "konsola": "xbox"}
 PROFILE = ("tv_mac", "tv_glosnik", "sluchawki", "iphone")
 WYGLADY = ("motyw", "klasyczny", "grafit", "granat")
+KONSOLE = ("xbox", "playstation")
 ID_GRY = re.compile(r"[A-Za-z0-9_.-]{1,80}")
 GRA_DOMYSLNA = "Grand Theft Auto VI"  # the only game before the catalogue: an old settings file means this one
 LOKALNE = ("127.0.0.1", "::1", "::ffff:127.0.0.1")
@@ -163,7 +172,27 @@ def popraw_ustawienie(k, v):
         return v
     if k == "wyglad" and v in WYGLADY:
         return v
+    if k == "konsola" and v in KONSOLE:
+        return v
     raise ValueError(k)
+
+
+def ps_remote_play():
+    """Path of the PS Remote Play app on this Mac, or None."""
+    return next((a for a in PS_REMOTE_PLAY if os.path.isdir(a)), None)
+
+
+def otworz_gre_zdalna(konsola):
+    """Opens the remote play of the chosen console: Xbox = its page in Chrome, PlayStation = Sony's Mac app.
+    Returns None when opened, or the error text for the user (what, why, how to fix)."""
+    if konsola == "playstation":
+        aplikacja = ps_remote_play()
+        if not aplikacja:
+            return PS_BRAK
+        subprocess.Popen(["open", "-a", aplikacja])
+        return None
+    subprocess.Popen(["open", "-a", "Google Chrome", XBOX])
+    return None
 
 
 def czytaj_ustawienia(plik):
@@ -1466,14 +1495,20 @@ class Stan:
             p, m, g = self.p, self.m, self.gra
         frac = p.roi()[0]
         if zrodlo == "ekran":
+            # PS5 without its app = nothing to read: refused before anything is opened or created (also no permission ask)
+            if otworz_xbox and self.ust["konsola"] == "playstation" and not ps_remote_play():
+                return {"ok": False, "blad": PS_BRAK}
             if not Quartz.CGPreflightScreenCaptureAccess():
                 Quartz.CGRequestScreenCaptureAccess()
                 return {"ok": False, "zgoda": True,
                         "blad": "macOS potrzebuje zgody na nagrywanie ekranu dla „Terminal” (to on uruchamia lektora). "
                                 "Zezwól w okienku systemu albo w Ustawieniach, potem otwórz program ponownie."}
             src = L.ZrodloEkran(frac)
-            if otworz_xbox:
-                subprocess.Popen(["open", "-a", "Google Chrome", XBOX])
+            if otworz_xbox:  # the console from the saved settings: the phone's Graj sends none
+                blad = otworz_gre_zdalna(self.ust["konsola"])
+                if blad:  # the app went away between the check and now
+                    src.zamknij()
+                    return {"ok": False, "blad": blad}
         elif zrodlo == "kamera":
             try:
                 src = L.ZrodloWideo(int(kamera), frac)
@@ -1894,7 +1929,7 @@ class Obsluga(BaseHTTPRequestHandler):
             return self._wyslij(200, {"ok": True})
         if sciezka == "/api/ustawienia":  # the game is chosen only by Graj / Próbka (under the one lock), not here
             with STAN.lock:
-                for k in ("profil", "urzadzenie", "zrodlo", "kamera", "wyglad"):
+                for k in ("profil", "urzadzenie", "zrodlo", "kamera", "wyglad", "konsola"):
                     if k in dane:
                         try:
                             STAN.ust[k] = popraw_ustawienie(k, dane[k])
@@ -1905,9 +1940,9 @@ class Obsluga(BaseHTTPRequestHandler):
         if sciezka == "/api/wylacz":  # behind the pilot key from the network (_wejscie) and the X-Lektor header
             STAN.wylacz_program()
             return self._wyslij(200, {"ok": True})
-        if sciezka == "/api/xbox":
-            subprocess.Popen(["open", "-a", "Google Chrome", XBOX])
-            return self._wyslij(200, {"ok": True})
+        if sciezka in ("/api/gra-zdalna", "/api/xbox"):  # "Otwórz … ponownie"; /api/xbox = the name before PS5
+            blad = otworz_gre_zdalna(STAN.ust["konsola"])
+            return self._wyslij(200, {"ok": not blad, "blad": blad})
         if sciezka == "/api/zgoda-ekranu":
             Quartz.CGRequestScreenCaptureAccess()
             subprocess.Popen(["open", USTAWIENIA_EKRANU])
