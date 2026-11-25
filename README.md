@@ -12,9 +12,15 @@ nie stosuje, a niektóre nie mają obszaru napisów. Przy każdej grze panel mó
 Lektor gra z głośników Maca, z głośnika Bluetooth, ze słuchawek albo z **iPhone'a**. Telefon może też być
 **pilotem**: włączasz i wyłączasz lektora oraz zmieniasz głośność z kanapy.
 
-| Panel na Macu | Pilot w iPhonie | iPhone jako głośnik lektora |
+| Moje gry — katalog na Macu | Ekran gry | Ustawienia |
 |---|---|---|
-| ![Panel na Macu](docs/panel-mac.jpg) | ![Pilot w iPhonie](docs/pilot-iphone.jpg) | ![iPhone gra lektora](docs/iphone-glosnik.jpg) |
+| ![Moje gry na Macu](docs/panel-mac.jpg) | ![Ekran gry na Macu](docs/gra-mac.jpg) | ![Ustawienia na Macu](docs/ustawienia-mac.jpg) |
+
+| Pilot w iPhonie | Ekran gry w iPhonie |
+|---|---|
+| ![Pilot w iPhonie](docs/pilot-iphone.jpg) | ![Ekran gry w iPhonie](docs/iphone-gra.jpg) |
+
+<sub>Okładki gier na zrzutach są celowo rozmyte — należą do wydawców i autorów paczek, w programie widzisz je normalnie.</sub>
 
 ## Jak to działa (po ludzku)
 
@@ -39,7 +45,7 @@ Nic nie jest wysyłane do internetu: wszystko dzieje się na Twoim Macu.
 Nie musisz znać się na programowaniu. Otwórz **Claude Code** (w aplikacji Claude: zakładka „Code”) albo **Codex**
 i wklej:
 
-> Zainstaluj mi lektora gier z https://github.com/maciek1027/gta-lektor-mac — postępuj według pliku AGENTS.md z tego repo.
+> Zainstaluj mi lektora gier z https://github.com/maciek1027/lektor-gier-mac — postępuj według pliku AGENTS.md z tego repo.
 
 AI pobierze program, przygotuje go i zbuduje aplikację z ikonką **„Lektor Gier na konsoli”** w Aplikacjach. Ty zrobisz
 tylko trzy rzeczy:
@@ -54,8 +60,8 @@ tylko trzy rzeczy:
 <summary>Wolisz sam, w Terminalu?</summary>
 
 ```bash
-git clone https://github.com/maciek1027/gta-lektor-mac.git
-cd gta-lektor-mac
+git clone https://github.com/maciek1027/lektor-gier-mac.git
+cd lektor-gier-mac
 ./instaluj.sh
 ```
 Potrzebny Python 3.10+ (np. `brew install python`). Paczki `.zip` wrzuć do folderu `paczki/`.
@@ -79,6 +85,20 @@ zminimalizować) i panel w oknie Chrome. macOS zapyta o kilka rzeczy — na wszy
 **Wyłączanie:** przycisk „Wyłącz program” w prawym górnym rogu panelu zatrzymuje lektora i serwer. Włączasz go znów
 ikonką „Lektor Gier na konsoli”. Masz jeszcze starą aplikację **„GTA Lektor”** (dawna nazwa)? Po pierwszym
 uruchomieniu nowej możesz ją usunąć z Aplikacji i wyciągnąć jej ikonkę z Docka.
+
+## Jak używać
+
+1. **Kliknij ikonkę „Lektor Gier na konsoli”** w Docku. Program zawsze otwiera się na **Moje gry** — katalogu
+   wszystkich gier, do których masz paczkę lektora.
+2. **Wybierz grę** (kafelek z okładką). Na ekranie gry zobaczysz, jak bardzo jest sprawdzona, ramkę „Ustaw w grze”
+   ze słowami autora paczki i przycisk **Graj**.
+3. **Kliknij Graj.** Program otworzy grę zdalną Xboxa w Chrome i zacznie czytać napisy. Kafelek gry dostaje znak
+   „▶ czyta”, a z każdego ekranu możesz lektora zatrzymać paskiem „Zatrzymaj lektora”.
+4. **Nowa gra:** kafelek „＋ Dodaj grę” → pobierz paczkę z gamereader.pl → wrzuć `.zip` do folderu gier
+   (przycisk „Otwórz folder gier”). Kafelek pojawi się sam po kilku sekundach, a jej okładka dołączy do tła.
+5. **Ustawienia** (przycisk z zębatką): jak słuchasz (TV + Mac, głośnik, słuchawki, iPhone), wzmocnienie lektora,
+   wygląd (Motyw gry, Okładki, Grafit, Granat) i kod QR pilota dla iPhone'a.
+6. **Koniec grania:** „Wyłącz program” w prawym górnym rogu.
 
 ## Ustawienia w grze
 
