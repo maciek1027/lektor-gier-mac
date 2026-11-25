@@ -1977,6 +1977,9 @@ def straznik(serwer):
 class Serwer(ThreadingHTTPServer):
     """IPv6 + IPv4 on one socket: the phone may reach MacBook….local over IPv6 first (Bonjour gives both)."""
     address_family = socket.AF_INET6
+    # listen backlog: the default 5 resets connections when the browser asks for dozens of library covers at once
+    # (measured 2026-11-25: 33 of 96 covers "Connection reset by peer")
+    request_queue_size = 128
 
     def server_bind(self):
         self.socket.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 0)

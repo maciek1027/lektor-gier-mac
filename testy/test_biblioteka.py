@@ -613,6 +613,20 @@ class TestTrasyBiblioteki(unittest.TestCase):
         for sciezka in ("/api/biblioteka/okladka/nie-ma", "/api/biblioteka/okladka/..%2f..%2fspis.json"):
             self.assertEqual(self.srv.zapytaj("GET", sciezka)[0], 404, sciezka)
 
+    def test_wiele_okladek_naraz_bez_zerwanych_polaczen(self):
+        """The browser asks for dozens of library covers at once (6+ connections, lazy images): every request must get its
+        answer. Measured 2026-11-25: 12 threads × 96 covers → 33 'Connection reset by peer' with the default backlog of 5."""
+        from concurrent.futures import ThreadPoolExecutor
+
+        def jedna(_):
+            try:
+                return self.srv.zapytaj("GET", "/api/biblioteka/okladka/aaa-1", timeout=10)[0]
+            except OSError as e:
+                return type(e).__name__
+        with ThreadPoolExecutor(32) as ex:
+            wyniki = list(ex.map(jedna, range(192)))
+        self.assertEqual([w for w in wyniki if w != 200], [])
+
     def test_stan_niesie_numer_biblioteki_i_postep(self):
         _, st = self.srv.json("GET", "/api/stan")
         self.assertIn("biblioteka_nr", st)
