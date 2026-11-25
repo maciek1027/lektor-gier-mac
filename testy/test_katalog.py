@@ -731,9 +731,11 @@ class TestKonsola(unittest.TestCase):
 
     def test_szybki_restart_nie_sprawdza_ani_nie_otwiera_aplikacji(self):
         self.st.ust["konsola"] = "playstation"  # no app; a quick restart (new device/profile) opens nothing anyway
-        with mock.patch.object(S, "Quartz", _BezZgodyEkranu()):
+        with mock.patch.object(S, "Quartz", _BezZgodyEkranu()), \
+                mock.patch.object(S, "ps_remote_play", wraps=S.ps_remote_play) as szukanie:
             r = self.st.start("ekran", "tv_mac", "", None, 0, False, "aaa")
         self.assertTrue(r.get("zgoda"), r)  # it went on to the screen permission, i.e. was not refused for the app
+        szukanie.assert_not_called()  # the app is not even looked for (review r1)
         self.assertEqual(self.otwarte(), [])
 
     def graj_z_pilota(self):
