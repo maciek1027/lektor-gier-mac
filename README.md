@@ -36,8 +36,9 @@ Nic nie jest wysyłane do internetu: wszystko dzieje się na Twoim Macu.
 
 - Maca (testowane na MacBooku Air M4 z nowym macOS) i przeglądarki **Google Chrome**,
 - Xboxa z grą zdalną (albo kartę przechwytującą obraz z przelotem na telewizor),
-- **paczek lektora** do Twoich gier w formacie GameReader 2.0 — pobierasz je sam ze strony
-  [gamereader.pl](https://gamereader.pl) (nie ma ich w tym repo, bo należą do ich autorów),
+- **paczek lektora** do Twoich gier w formacie GameReader 2.0 — pobierasz je przyciskiem „Pobierz” w sekcji
+  „Biblioteka GameReadera” programu (lista i pliki prosto z serwera [gamereader.pl](https://gamereader.pl)) albo sam
+  z ich strony (nie ma ich w tym repo, bo należą do ich autorów),
 - opcjonalnie iPhone'a w tym samym Wi-Fi.
 
 ## Instalacja — zrobi to za Ciebie AI
@@ -50,9 +51,10 @@ i wklej:
 AI pobierze program, przygotuje go i zbuduje aplikację z ikonką **„Lektor Gier na konsoli”** w Aplikacjach. Ty zrobisz
 tylko trzy rzeczy:
 
-1. **Dodasz grę:** pobierzesz paczkę lektora z [gamereader.pl](https://gamereader.pl) i wrzucisz plik `.zip`
-   do folderu gier (`paczki`; AI pokaże Ci gdzie, a w panelu jest kafelek „＋ Dodaj grę” z przyciskiem
-   „Otwórz folder gier”). Gra pojawi się w katalogu sama po ok. 5 sekundach.
+1. **Dodasz grę:** w panelu pod „Moje gry” jest **Biblioteka GameReadera** — znajdź grę (szukajka) i kliknij
+   „Pobierz”; po pobraniu i sprawdzeniu paczki gra sama przejdzie do „Moje gry”. Paczkę spoza biblioteki pobierzesz
+   z [gamereader.pl](https://gamereader.pl) i wrzucisz plik `.zip` do folderu gier (`paczki`; kafelek „＋ Dodaj grę”
+   ma przycisk „Otwórz folder gier”) — pojawi się sama po ok. 5 sekundach.
 2. **Klikniesz zgody macOS**, gdy system zapyta (lista niżej).
 3. **Ustawisz napisy w grze** (niżej i na ekranie gry w panelu).
 
@@ -94,8 +96,13 @@ uruchomieniu nowej możesz ją usunąć z Aplikacji i wyciągnąć jej ikonkę z
    ze słowami autora paczki i przycisk **Graj**.
 3. **Kliknij Graj.** Program otworzy grę zdalną Xboxa w Chrome i zacznie czytać napisy. Kafelek gry dostaje znak
    „▶ czyta”, a z każdego ekranu możesz lektora zatrzymać paskiem „Zatrzymaj lektora”.
-4. **Nowa gra:** kafelek „＋ Dodaj grę” → pobierz paczkę z gamereader.pl → wrzuć `.zip` do folderu gier
-   (przycisk „Otwórz folder gier”). Kafelek pojawi się sam po kilku sekundach, a jej okładka dołączy do tła.
+4. **Nowa gra:** sekcja **Biblioteka GameReadera** pod „Moje gry” (wszystkie paczki z gamereader.pl, z okładkami
+   i szukajką) → „Pobierz · rozmiar” → pasek postępu (obok otwiera się biblioteka na stronie GameReadera — twórcy paczek
+   zostają w zasięgu wzroku) → sprawdzenie paczki → gra w „Moje gry”. Gdy biblioteka w programie nie działa, panel
+   pokazuje instrukcję pobrania ręcznego z przyciskiem strony GameReadera. Jedno pobieranie
+   naraz; brak internetu, odłączony dysk z grami albo mało miejsca program mówi wprost na kafelku. Gry bez obszaru
+   napisów są oznaczone „Na razie nie na Macu” (widać je, ale czytnik ich nie odczyta). Działa też z pilota w iPhonie
+   (paczka trafia na Maca). Paczka spoza biblioteki: kafelek „＋ Dodaj grę” → wrzuć `.zip` do folderu gier.
 5. **Ustawienia** (przycisk z zębatką): jak słuchasz (TV + Mac, głośnik, słuchawki, iPhone), wzmocnienie lektora,
    wygląd (Motyw gry, Okładki, Grafit, Granat) i kod QR pilota dla iPhone'a.
 6. **Koniec grania:** „Wyłącz program” w prawym górnym rogu.
@@ -141,6 +148,9 @@ i przygotuje zgłoszenie, a Ty decydujesz, czy je wysłać. Jak to zrobić samod
 
 - To niezależny projekt hobbystyczny. Nie jest powiązany z twórcami gier ani wydawcami, z Microsoftem (Xbox) ani
   z twórcami GameReadera.
-- Paczki lektora tworzy społeczność GameReadera — pobieraj je z ich strony i korzystaj zgodnie z ich zasadami.
+- Paczki lektora tworzy społeczność GameReadera — korzystaj z nich zgodnie z ich zasadami. Biblioteka w programie
+  czyta publiczną listę paczek i pobiera paczki z serwera GameReadera (tego samego, z którego korzysta ich program);
+  nie wysyła tam nic o Tobie poza ogólną nazwą programu. Paczki zapisuje bez zmian w Twoim folderze gier. Pobieranie
+  z programu wyłączysz linią `LEKTOR_POBIERANIE=0` w `lokalne.env` (biblioteka pokaże wtedy link do strony gry).
   To repo zawiera tylko program, który odtwarza paczki w formacie GameReader 2.0 na Macu.
 - Licencja kodu: [MIT](LICENSE).

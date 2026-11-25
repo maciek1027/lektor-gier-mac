@@ -5,7 +5,8 @@ Użytkownik dał Ci to repo, żebyś **zainstalował i uruchomił lektora gier n
 użytkownik usuwa ją sam po pierwszym uruchomieniu nowej). Zwykle nie jest programistą:
 rozmawiaj z nim po polsku, prostym językiem, jeden krok naraz. Wszystko, co da się zrobić poleceniem, robisz Ty.
 Użytkownik robi tylko trzy rzeczy, których AI zrobić nie może: **klika zgody macOS**, **pobiera paczkę lektora**
-i **włącza grę / napisy w grze**. Pobieranie paczek z poziomu programu jeszcze nie istnieje — paczki pobiera człowiek.
+i **włącza grę / napisy w grze**. Paczki lektora wybiera i pobiera człowiek — przyciskiem „Pobierz” w sekcji
+„Biblioteka GameReadera” panelu (program sam ściąga i sprawdza paczkę) albo ręcznie ze strony. Ty paczek nie pobierasz.
 
 ## Co to jest (żebyś rozumiał, co instalujesz)
 
@@ -36,9 +37,13 @@ i głośnikiem lektora.
 3. **Uruchom instalator:** `./instaluj.sh` (z folderu repo). Tworzy `.venv`, instaluje `requirements.txt`, sprawdza
    import, buduje aplikację „Lektor Gier na konsoli” w `/Applications`. Kod wyjścia ≠ 0 → przeczytaj komunikat, napraw, powtórz.
    Opcjonalnie `brew install ffmpeg` (okienko z filmem w demo, lista kart przechwytujących).
-4. **Paczka lektora (robi użytkownik):** zapytaj, w jaką grę gra, i poproś o pobranie paczki tej gry dla
-   GameReadera 2.0 ze strony https://gamereader.pl oraz wrzucenie `.zip` do folderu `paczki/` (`open paczki`;
-   w panelu: kafelek „＋ Dodaj grę” → „Otwórz folder gier”). Nie rozpakowuj — program czyta prosto z ZIP-a. Paczka
+4. **Paczka lektora (robi użytkownik):** zapytaj, w jaką grę gra, i pokaż mu w panelu sekcję **Biblioteka
+   GameReadera** (pod „Moje gry”): szukajka → „Pobierz” → gra sama trafia do „Moje gry” (program sprawdza rozmiar,
+   cały ZIP i budowę paczki; nic nie zmienia w jej treści; na Macu obok otwiera się strona biblioteki GameReadera;
+   gdy biblioteka w programie nie działa, panel sam pokazuje drogę ręczną). Gry oznaczone „Na razie nie na Macu” nie mają obszaru
+   napisów — nie zadziałają. Paczka spoza biblioteki: pobranie ze strony https://gamereader.pl i wrzucenie `.zip`
+   do folderu `paczki/` (`open paczki`; w panelu: kafelek „＋ Dodaj grę” → „Otwórz folder gier”). Pobieranie
+   z programu wyłącza `LEKTOR_POBIERANIE=0` w `lokalne.env`. Nie rozpakowuj — program czyta prosto z ZIP-a. Paczka
    należy do jej autorów: nie wrzucaj jej do gita ani nigdzie indziej. Gra pojawia się w katalogu panelu sama
    (ok. 5 s). Sprawdzenie z wiersza poleceń:
    `.venv/bin/python -c "import lektor as L; p=L.Paczka(L.znajdz('.zip','LEKTOR_PACZKA')); print(len(p.ids))"`
@@ -90,6 +95,10 @@ pilot ma zostać otwarty). Z sieci serwer wpuszcza tylko z tajnym kluczem (pole 
 - **Lektor milczy w grze:** `Lektor Gier na konsoli.command` → opcja 4 zapisuje `podglad.png` i `podglad_obszar.png` — w drugim
   muszą być napisy. Nie ma → gra nie na pełnym ekranie albo brak zgody na nagrywanie ekranu.
 - **Port 8797 zajęty:** serwer już działa (`lsof -iTCP:8797 -sTCP:LISTEN`); otwórz `http://127.0.0.1:8797/`.
+- **Biblioteka:** „Nie mogę pobrać listy gier” = brak internetu albo serwer GameReadera nie odpowiada (pokazuje
+  wtedy ostatnią zapisaną listę z datą); „Podłącz dysk” = folder gier leży na odłączonym dysku; „Za mało miejsca”
+  = paczka + 200 MB zapasu nie mieszczą się na dysku z grami. Niedokończone pobieranie to plik `*.zip.czesc` —
+  program usuwa go sam przy następnym starcie albo pobieraniu (gdy leży nietknięty ponad 10 min).
 - **Paczka:** katalog pusty albo komunikat „Nie widzę paczki wybranej gry” → `.zip` nie leży w folderze gier
   (`paczki/` albo `LEKTOR_PACZKI` z `lokalne.env`); „Nie widzę dysku” → dysk zewnętrzny z paczkami odłączony.
 - **Wyłączanie:** przycisk „Wyłącz program” w panelu kończy serwer (także gdy połączony jest pilot). Bez niego

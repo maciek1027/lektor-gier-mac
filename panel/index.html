@@ -86,6 +86,35 @@ a.btn{text-decoration:none;color:var(--ink);display:inline-block}
 .odznaka{display:inline-block;margin:4px 12px 0;font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid currentColor}
 .s-sprawdzona{color:var(--ok)}.s-nagranie{color:var(--info)}.s-niesprawdzona,.s-wczytuje,.s-kopiuje,.s-nie_na_dysku{color:var(--ink2)}
 .s-ryzyko{color:var(--warn)}.s-nie_na_macu,.s-blad{color:#ffb0b0}
+/* GameReader library (packs not on disk yet) */
+#bib{margin-top:26px}
+.bibGlowa{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.bibGlowa .step{margin:0;flex:1;min-width:200px}
+#bibSzukaj{flex:0 1 280px;min-width:0;width:100%;border:1px solid var(--line);background:rgba(14,15,19,.72);color:var(--ink);border-radius:12px;padding:9px 12px;font:inherit;font-size:15px}
+#bibSzukaj::placeholder{color:var(--ink3)}
+.bibInfo{color:var(--ink2);margin:0 0 12px;background:rgba(14,15,19,.6);display:inline-block;border-radius:10px;padding:4px 10px}
+.bkafel{cursor:pointer}
+.bkafel.wylaczony{opacity:1}.bkafel.wylaczony .ok-img,.bkafel.wylaczony .bez{opacity:.45;filter:grayscale(.6)}  /* texts keep full contrast */
+.bAkcja{padding:8px 12px 0;display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.bAkcja small{color:var(--ink2);font-size:12.5px;line-height:1.35}
+.bAkcja .bBlad{color:#ffc4c4}
+.bAkcja .btn{color:var(--ink)}
+.btn.bPobierz,.btn.bPobierz:hover{background:linear-gradient(90deg,var(--akcent),var(--akcent2));border-color:transparent;color:#fff!important}
+.pasek{width:100%;height:8px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden}
+.pasek i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--akcent),var(--akcent2));transition:width .4s}
+.s-pobiera,.s-sprawdza{color:var(--info)}.s-blad_pobierania{color:#ffb0b0}
+.dzieki{color:var(--ink2);margin:14px 0 0;background:rgba(14,15,19,.6);display:inline-block;border-radius:10px;padding:6px 10px}
+.dzieki a{color:var(--info)}
+.okno{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.62);display:flex;align-items:center;justify-content:center;padding:16px}
+.okno[hidden]{display:none}
+.oknoKarta{position:relative;max-width:560px;width:100%;max-height:calc(100vh - 32px);overflow:auto;background:rgba(18,19,24,.97);margin:0}
+.oknoKarta img{width:100%;aspect-ratio:460/215;object-fit:cover;border-radius:12px;display:block;margin-bottom:10px}
+.oknoKarta .zamknij{position:absolute;top:10px;right:10px;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(0,0,0,.72);color:#fff;font-size:18px;cursor:pointer}
+.oknoKarta h2{margin:4px 0 2px;font-size:20px}
+.oknoKarta .odznaka{margin-left:0}
+.oknoKarta .bAkcja{padding:12px 0 0}
+.ramka li{white-space:pre-line}
+.ramka a{color:#ffe2a8}
 .pusto{text-align:center;padding:26px 18px}
 .pusto p{margin:6px 0 14px;color:var(--ink2)}
 /* game screen */
@@ -226,6 +255,18 @@ body:not(.tel) .telOnly{display:none!important}
     <p class="step">＋ Dodaj grę</p>
     <div id="dodajKroki"></div>
   </div>
+  <div id="bib" style="display:none">
+    <div class="bibGlowa"><p class="step" id="bibTytul">Biblioteka GameReadera</p>
+      <input type="search" id="bibSzukaj" placeholder="Szukaj gry…" aria-label="Szukaj gry w bibliotece GameReadera" autocomplete="off"></div>
+    <p class="small bibInfo" id="bibInfo"></p>
+    <div class="card pusto" id="bibStan" style="display:none"><h2 id="bibStanTytul"></h2><p id="bibStanTxt"></p>
+      <button class="btn" id="bibPonow">Spróbuj ponownie</button>
+      <div id="bibReczne" style="display:none;text-align:left;margin-top:16px"></div></div>
+    <div class="gry" id="bibGry"></div>
+    <p class="small bibInfo" id="bibBrak" style="display:none">Nie ma gry o takiej nazwie w bibliotece.</p>
+    <p class="small dzieki">Paczki lektora nagrywa i udostępnia społeczność GameReadera — dziękujemy autorom!
+      <a href="https://gamereader.pl" target="_blank" rel="noopener">gamereader.pl</a></p>
+  </div>
 </section>
 
 <!-- ============================================================ game screen -->
@@ -333,6 +374,18 @@ body:not(.tel) .telOnly{display:none!important}
 </section>
 </div>
 
+<div class="okno" id="bibOkno" hidden><div class="card oknoKarta" role="dialog" aria-modal="true" aria-labelledby="bibOknoNazwa">
+  <button class="zamknij" id="bibZamknij" aria-label="Zamknij">✕</button>
+  <img id="bibOknoOkl" alt="">
+  <h2 id="bibOknoNazwa"></h2>
+  <p class="autor small" id="bibOknoAutor" style="color:var(--ink2);margin:0"></p>
+  <span class="odznaka" id="bibOknoOdznaka"></span>
+  <p class="small" id="bibOknoStan" style="color:var(--ink2)"></p>
+  <p class="opis" id="bibOknoOpis"></p>
+  <div class="ramka" id="bibOknoRamka" style="display:none"><b>⚙︎ Ustaw w grze</b> <span class="small">(słowa autora paczki)</span><ul id="bibOknoWym"></ul></div>
+  <div class="bAkcja" id="bibOknoAkcja"></div>
+</div></div>
+
 <script>
 // Phone mode = opened from the network (the iPhone remote); on the Mac the panel lives on 127.0.0.1.
 const TEL=!["127.0.0.1","localhost","[::1]"].includes(location.hostname);
@@ -425,13 +478,124 @@ function mozaika(){  // as many tiles as fill the (rotated, enlarged) screen, co
 let mozaikaT=null; addEventListener("resize",()=>{ clearTimeout(mozaikaT); mozaikaT=setTimeout(mozaika,200); });
 document.querySelectorAll(".wyg").forEach(b=>b.onclick=async()=>{ wygladTouched=Date.now(); if(st) st.ustawienia.wyglad=b.dataset.w; motyw(); await api("/api/ustawienia",{wyglad:b.dataset.w}); });
 
-function krokiDodaj(){  // the same three steps on the add tile and in an empty catalogue
-  return `<ol class="kroki"><li><b>Pobierz paczkę lektora</b> wybranej gry ze strony gamereader.pl (plik .zip — nie rozpakowuj go).</li>`
+function krokiDodaj(){  // the same steps on the add tile and in an empty catalogue
+  const zBib=bib&&bib.stan!=="wylaczona", pob=zBib&&bib.pobieranie;
+  return (zBib?`<p><b>Najprościej:</b> znajdź grę w „Bibliotece GameReadera” niżej i ${pob?"kliknij „Pobierz” — gra sama trafi do „Moje gry”."
+       :"otwórz ją na gamereader.pl, pobierz plik .zip i wrzuć go do folderu gier (kroki niżej)."}</p>`
+       +`<button class="btn" onclick="doBiblioteki()">Przejdź do biblioteki</button><p class="small" style="margin-top:14px">Paczka spoza biblioteki? Dodasz ją tak:</p>`:"")
+   +`<ol class="kroki"><li><b>Pobierz paczkę lektora</b> wybranej gry ze strony gamereader.pl (plik .zip — nie rozpakowuj go).</li>`
    +`<li><b>Wrzuć plik .zip do folderu gier</b> na Macu${TEL?" (zrób to na Macu)":" — przycisk „Otwórz folder gier” niżej"}.</li>`
    +`<li><b>Gra pojawi się tu sama</b> po ok. 5 sekundach.</li></ol>`
-   +`<p class="small">Wkrótce: pobieranie gier z biblioteki GameReadera prosto z tego okna.</p>`
    +`<div class="dodajPrzyciski macOnly"><a class="btn" href="https://gamereader.pl" target="_blank" rel="noopener">Otwórz gamereader.pl</a>`
    +`<button class="btn" onclick="api('/api/folder-paczek')">Otwórz folder gier</button></div>`;
+}
+function doBiblioteki(){ $("dodajKarta").style.display="none"; $("bib").scrollIntoView({behavior:"smooth",block:"start"}); setTimeout(()=>$("bibSzukaj").focus({preventScroll:true}),400); }
+
+// ------------------------------------------------------------------ GameReader library (packs not on disk yet)
+// The list comes by its own number (biblioteka_nr in /api/stan) and is drawn only when it changes; the download progress
+// (every second in /api/stan) moves the bar in place — the 96 tiles and their covers are never rebuilt for it.
+let bib=null, bibNr=null, bibOtwarta=null;
+const GR_BIBLIOTEKA="https://gamereader.pl/biblioteka";  // their library page: opened with every download (operator 2026-11-25)
+function reczne(){  // the manual route, shown whenever the library in the program does not work
+  return `<p><b>Pobierz grę ręcznie</b> — tak samo działa, tylko kilka kliknięć więcej:</p><ol class="kroki">`
+   +`<li>Otwórz bibliotekę na stronie GameReadera i pobierz paczkę lektora swojej gry (plik .zip — nie rozpakowuj go).</li>`
+   +`<li>Wrzuć plik .zip do folderu gier na Macu${TEL?" (zrób to na Macu)":""}.</li><li>Gra pojawi się w „Moje gry” sama po ok. 5 sekundach.</li></ol>`
+   +`<div class="dodajPrzyciski"><a class="btn bPobierz" href="${GR_BIBLIOTEKA}" target="_blank" rel="noopener">Otwórz bibliotekę GameReadera</a>`
+   +`<button class="btn macOnly" onclick="api('/api/folder-paczek')">Otwórz folder gier</button></div>`;
+}
+const bibOkladka=id=>"/api/biblioteka/okladka/"+encodeURIComponent(id)+(TEL?"?k="+encodeURIComponent(K):"");
+const bibGra=id=>bib&&bib.gry.find(g=>g.id===id);
+const bez=s=>String(s||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/ł/g,"l");
+const ROZ=b=>b>=1e9?(b/1e9).toFixed(1).replace(".",",")+" GB":Math.max(1,Math.round(b/1e6))+" MB";
+function bibAkcja(g){  // what a library tile (and its window) offers in each state
+  const p=st&&st.pobieranie;
+  if(g.stan==="nie_na_macu") return `<small>${esc(g.stan_opis)}</small>`;
+  if(g.stan==="pobiera"||g.stan==="sprawdza"){ const pr=p&&p.id===g.id?p:{procent:0,pobrane:0,rozmiar:g.rozmiar};
+    return `<div class="pasek" data-pasek="${esc(g.id)}"><i style="width:${g.stan==="sprawdza"?100:pr.procent}%"></i></div>`
+      +`<small data-proc="${esc(g.id)}">${g.stan==="sprawdza"?"Sprawdzam paczkę (czy jest cała)…":pr.procent+" % · "+ROZ(pr.pobrane)+" z "+ROZ(pr.rozmiar)}</small>`
+      +(g.stan==="pobiera"?`<button class="btn small" data-przerwij="1">Przerwij</button>`:"")
+      +`<a class="small" href="${GR_BIBLIOTEKA}" target="_blank" rel="noopener" style="color:var(--info)">Biblioteka na gamereader.pl</a>`; }
+  if(!bib.pobieranie) return `<a class="btn small" href="https://gamereader.pl/biblioteka" target="_blank" rel="noopener">Otwórz na gamereader.pl</a>`
+    +`<small>Pobierz plik .zip i wrzuć go do folderu gier — gra pojawi się w „Moje gry”.</small>`;
+  if(g.stan==="blad_pobierania") return `<small class="bBlad">${esc(g.stan_opis)}</small><button class="btn small bPobierz" data-pobierz="${esc(g.id)}">Spróbuj ponownie · ${ROZ(g.rozmiar)}</button>`
+    +(g.reczne?`<a class="btn small" href="${GR_BIBLIOTEKA}" target="_blank" rel="noopener">Pobierz ręcznie ze strony GameReadera</a>`:"");  // server-side failure: the site is the way out
+  return `<button class="btn small bPobierz" data-pobierz="${esc(g.id)}">Pobierz · ${ROZ(g.rozmiar)}</button>`;
+}
+function renderBib(){
+  const sek=$("bib"); if(!bib||bib.stan==="wylaczona"){ sek.style.display="none"; return; } sek.style.display="";
+  const ile=bib.wszystkich||0, naDysku=ile-bib.gry.length, nieMac=bib.gry.filter(g=>g.stan==="nie_na_macu").length;
+  $("bibTytul").textContent="Biblioteka GameReadera"+(ile?" ("+ile+")":"");
+  const brak=bib.stan==="brak"||(!bib.gry.length&&bib.stan==="laduje");
+  $("bibStan").style.display=brak?"":"none"; $("bibSzukaj").style.display=bib.gry.length?"":"none";
+  if(brak){ $("bibStanTytul").textContent=bib.stan==="laduje"?"Pobieram listę gier GameReadera…":"Nie mogę pobrać listy gier GameReadera";
+    $("bibStanTxt").textContent=bib.komunikat||""; $("bibPonow").style.display=bib.stan==="laduje"?"none":""; }
+  const pokazReczne=brak&&bib.stan!=="laduje"; $("bibReczne").style.display=pokazReczne?"":"none";
+  if(pokazReczne&&!$("bibReczne").innerHTML) $("bibReczne").innerHTML=reczne();
+  const info=[]; if(bib.stan==="offline"&&bib.komunikat) info.push(bib.komunikat);
+  if(bib.stan==="ok") info.push("Lista z gamereader.pl"+(naDysku>0?` · ${naDysku} z tych gier masz już w „Moje gry”`:""));
+  if(nieMac) info.push(`„Na razie nie na Macu” (${nieMac}): paczki bez obszaru napisów — widoczne, ale czytnik na Macu ich nie odczyta`);
+  if(!bib.pobieranie&&bib.gry.length) info.push("Pobieranie z programu wyłączone — paczkę pobierasz ze strony i wrzucasz do folderu gier");
+  $("bibInfo").textContent=info.join(" · "); $("bibInfo").style.display=info.length?"":"none";
+  const html=bib.gry.map(g=>{ const wyl=g.stan==="nie_na_macu";
+    const obraz=g.okladka?`<img class="ok-img" src="${bibOkladka(g.id)}" alt="" loading="lazy">`:`<div class="bez">🎮</div>`;
+    return `<div class="kafel bkafel${wyl?" wylaczony":""}" role="button" tabindex="0" data-bid="${esc(g.id)}" data-szukaj="${esc(bez(g.nazwa))}" title="${esc(g.stan_opis)}">${obraz}`
+      +`<b>${esc(g.nazwa)}</b><span class="odznaka s-${esc(g.stan)}">${esc(g.stan_nazwa)}</span><div class="bAkcja">${bibAkcja(g)}</div></div>`; }).join("");
+  if(html!==renderBib.bylo){ renderBib.bylo=html; $("bibGry").innerHTML=html; szukajBib(); }
+  if(bibOtwarta) oknoBib(bibOtwarta);
+  postepBib();
+}
+function postepBib(){  // the bar and the percentage of the running download, in place (tile and window)
+  const p=st&&st.pobieranie; if(!p||p.faza!=="pobiera") return;
+  document.querySelectorAll(`[data-pasek="${CSS.escape(p.id)}"] i`).forEach(i=>i.style.width=p.procent+"%");
+  document.querySelectorAll(`[data-proc="${CSS.escape(p.id)}"]`).forEach(s=>s.textContent=p.procent+" % · "+ROZ(p.pobrane)+" z "+ROZ(p.rozmiar));
+}
+function szukajBib(){
+  const q=bez($("bibSzukaj").value.trim()); let widac=0;
+  document.querySelectorAll("#bibGry .bkafel").forEach(k=>{ const t=!q||k.dataset.szukaj.includes(q); k.style.display=t?"":"none"; if(t) widac++; });
+  $("bibBrak").style.display=bib&&bib.gry.length&&!widac?"":"none";
+}
+$("bibSzukaj").oninput=szukajBib;
+async function wczytajBib(nr){
+  try{ const r=await get("/api/biblioteka"); if(!r.ok) throw new Error("HTTP "+r.status);
+    bib=await r.json(); bibNr=nr; renderBib();
+    for(const id of ["katPustyKroki","dodajKroki"]) if($(id).innerHTML){ const h=krokiDodaj(); if($(id).innerHTML!==h) $(id).innerHTML=h; } }  // the steps name the library
+  catch(e){ if(bib) return;  // keep the last good list; with none, say why (never an empty library pretending to be complete)
+    bib={stan:"brak",komunikat:"Nie mogę pobrać listy biblioteki z Maca ("+(e.message||e)+"). Ponawiam za chwilę.",gry:[],pobieranie:true,awaria:true}; renderBib(); }  // bibNr stays old: retried
+}
+async function pobierzBib(id){
+  const g=bibGra(id); if(!g) return;
+  if(g.rozmiar>1e9&&!confirm(`„${g.nazwa}” ma ${ROZ(g.rozmiar)} — pobieranie potrwa dłużej. Pobrać?`)) return;
+  // the download starts AND the GameReader library opens beside it (operator 2026-11-25: people see the authors' site).
+  // Mac only: on the phone it would throw the remote out to Safari — the tile carries the link instead. The tab is opened
+  // right in the click (a popup blocker allows that), gets the address once the server agreed, and closes on a refusal.
+  const okno=TEL?null:window.open("about:blank","_blank"); if(okno) okno.opener=null;
+  const r=await api("/api/biblioteka/pobierz",{id});
+  if(r&&r.ok===false){ if(okno) okno.close(); alert(r.blad); } else if(okno) okno.location.href=GR_BIBLIOTEKA;
+  bibNr=null; tick();
+}
+$("bibGry").onclick=e=>{ const b=e.target.closest("[data-pobierz]"); if(b){ e.stopPropagation(); return pobierzBib(b.dataset.pobierz); }
+  if(e.target.closest("[data-przerwij]")){ e.stopPropagation(); return api("/api/biblioteka/przerwij").then(()=>{bibNr=null;tick();}); }
+  if(e.target.closest("a")) return; const k=e.target.closest(".bkafel"); if(k) oknoBib(k.dataset.bid); };
+$("bibGry").onkeydown=e=>{ if((e.key==="Enter"||e.key===" ")&&e.target.classList.contains("bkafel")){ e.preventDefault(); oknoBib(e.target.dataset.bid); } };
+function oknoBib(id){
+  const g=bibGra(id); if(!g){ zamknijOkno(); return; } const nowe=bibOtwarta!==id; bibOtwarta=id;
+  if(nowe){ $("bibOknoOkl").style.display=g.okladka?"":"none"; if(g.okladka) $("bibOknoOkl").src=bibOkladka(g.id);
+    $("bibOknoNazwa").textContent=g.nazwa; $("bibOknoAutor").textContent=[g.autor&&"Paczka: "+g.autor,g.wersja&&"wersja "+g.wersja,ROZ(g.rozmiar)].filter(Boolean).join(" · ");
+    $("bibOknoOpis").textContent=g.opis||""; const wym=g.wymagania||[]; $("bibOknoRamka").style.display=wym.length?"":"none"; $("bibOknoWym").innerHTML=wymagania(wym); }
+  $("bibOknoOdznaka").className="odznaka s-"+g.stan; $("bibOknoOdznaka").textContent=g.stan_nazwa; $("bibOknoStan").textContent=g.stan==="nie_na_macu"?"":g.stan_opis||"";
+  const a=bibAkcja(g); if($("bibOknoAkcja").dataset.h!==a){ $("bibOknoAkcja").dataset.h=a; $("bibOknoAkcja").innerHTML=a; }
+  if($("bibOkno").hidden){ $("bibOkno").hidden=false; $("bibZamknij").focus(); }
+}
+function zamknijOkno(){ bibOtwarta=null; $("bibOkno").hidden=true; $("bibOknoAkcja").dataset.h=""; }
+$("bibZamknij").onclick=zamknijOkno;
+$("bibOkno").onclick=e=>{ if(e.target===$("bibOkno")) return zamknijOkno();
+  const b=e.target.closest("[data-pobierz]"); if(b) return pobierzBib(b.dataset.pobierz);
+  if(e.target.closest("[data-przerwij]")) api("/api/biblioteka/przerwij").then(()=>{bibNr=null;tick();}); };
+addEventListener("keydown",e=>{ if(e.key==="Escape"&&!$("bibOkno").hidden) zamknijOkno(); });
+$("bibPonow").onclick=async()=>{ await api("/api/biblioteka/odswiez"); bibNr=null; setTimeout(tick,1500); };
+function wymagania(lista){  // the pack author's words: a string (manifest) or {tekst, url} (library list)
+  return lista.map(w=>{ const t=typeof w==="string"?w:w.tekst, u=typeof w==="string"?null:(/^https:\/\//.test(w.url||"")?w.url:null);  // https only, also here
+    return `<li>${esc(t)}${u?` <a href="${esc(u)}" target="_blank" rel="noopener">(link)</a>`:""}</li>`; }).join("");
 }
 const TYTUL={blad_pobrania:"Nie mogę pobrać listy gier",brak_dysku:"Nie widzę dysku z grami",brak_folderu:"Nie ma folderu gier",pusty:"Nie masz jeszcze żadnej gry",blad:"Nie mogę odczytać folderu gier",skanuje:"Sprawdzam folder gier…"};
 function renderKatalog(){
@@ -474,7 +638,7 @@ function renderGra(){
   $("graNazwa").textContent=g.nazwa; $("graAutor").textContent=[g.autor&&"Paczka: "+g.autor,g.wersja&&"wersja "+g.wersja].filter(Boolean).join(" · ");
   $("graOdznaka").className="odznaka s-"+g.stan; $("graOdznaka").textContent=g.stan_nazwa; $("graStanOpis").textContent=g.stan_opis||"";
   $("graOpis").textContent=g.opis||""; $("graOpisWiecej").style.display=(g.opis||"").length>260&&$("graOpis").classList.contains("krotki")?"":"none";
-  const wym=g.wymagania||[]; $("graRamka").style.display=wym.length?"":"none"; $("graWymagania").innerHTML=wym.map(w=>`<li>${esc(w)}</li>`).join("");
+  const wym=g.wymagania||[]; $("graRamka").style.display=wym.length?"":"none"; const wh=wymagania(wym); if($("graWymagania").innerHTML!==wh) $("graWymagania").innerHTML=wh;
   const gl=Math.round((st.ustawienia[profil==="iphone"?"glosnosc_iphone":"glosnosc"]??1)*100);
   $("graSluchasz").innerHTML=`<span>🎧 Słuchasz: <b>${esc(PROFIL_NAZWA[profil])}</b>${profil==="iphone"?"":" · "+esc($("dev").value||"domyślne wyjście")} · ${profil==="iphone"?"wzmocnienie":"głośność"} ${gl}%</span><button class="link" onclick="pokaz('ustawienia')">Zmień w Ustawieniach</button>`;
   const ta=st.gra&&st.gra.id===g.id, czyta=st.dziala, gotowa=!["nie_na_macu","blad","nie_na_dysku","wczytuje","kopiuje"].includes(g.stan);
@@ -551,6 +715,7 @@ function render(){
   if(st.pilot) renderPilot(st.pilot);
   if(TEL) renderTel();
   if(st.katalog_nr!==katNr||(kat&&kat.stan==="blad_pobrania")) wczytajKatalog(st.katalog_nr); else renderKatalog();
+  if(st.biblioteka_nr!==bibNr) wczytajBib(st.biblioteka_nr); else { postepBib(); if(bibOtwarta) oknoBib(bibOtwarta); }
   pasekStop();
   renderGra(); if(Date.now()-wygladTouched>3000) motyw();
 }

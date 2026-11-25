@@ -3,7 +3,8 @@
 
 Serves panel/index.html and a small JSON API that drives lektor.py: the game catalogue (voice packs in the packs
 folder), start/stop the reader, a short sample of a game, live volume, output device, Chrome with Xbox Remote Play,
-demo. Requests from this Mac (127.0.0.1) work as before; every request from the network needs the secret key `k`
+demo, and the GameReader library (their public list of voice packs; "Pobierz" downloads, checks and drops a pack
+into the packs folder). Requests from this Mac (127.0.0.1) work as before; every request from the network needs the secret key `k`
 (kept in ustawienia.json, shown on the Mac panel as a QR code).
 Profile "iphone": matched lines are not played on the Mac but sent to the phone (long-poll), which plays them.
 Game change: one lock covers change, start and stop; the reader is confirmed stopped before the pack is swapped,
@@ -15,6 +16,7 @@ Test instance: LEKTOR_PORT=8798 LEKTOR_USTAWIENIA=/tmp/x.json .venv/bin/python s
 import base64
 import collections
 import colorsys
+import errno
 import hashlib
 import hmac
 import io
@@ -23,16 +25,20 @@ import os
 import random
 import re
 import secrets
+import shutil
 import socket
+import ssl
 import statistics
 import subprocess
 import sys
 import tempfile
 import threading
 import time
+import urllib.error
+import urllib.request
 import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import Quartz
 
@@ -74,6 +80,16 @@ TYPY = {"jpg": "image/jpeg", "png": "image/png", "mp4": "video/mp4"}
 STARY_S = 6  # a phone line older than this is not worth waiting for
 KOPIA_S = 60  # an unreadable pack changed less than this ago is still being copied, not broken
 ZAJETY = "Lektor właśnie się przełącza (zmiana gry, start albo stop) — spróbuj za chwilę."
+# GameReader library: the public list of voice packs (the same one their program reads). Read in the background, kept in
+# the cache folder; nothing about the user is sent (a generic program name only). LEKTOR_SPIS overrides the address.
+SPIS_URL = os.environ.get("LEKTOR_SPIS") or "https://voicepack-proxy.gamereader-pl.workers.dev/"
+HOSTY_BIBLIOTEKI = ("voicepack.gamereader.pl",)  # download and cover addresses from the list must point here (https)
+# "Pobierz" inside the program; LEKTOR_POBIERANIE=0 (lokalne.env) = the library shows the list with a link to gamereader.pl
+POBIERANIE = os.environ.get("LEKTOR_POBIERANIE", "1") != "0"
+UA = "LektorGierNaKonsoli/1.0"
+ZAPAS_B = 200 * 1024 * 1024  # free space kept on the packs disk on top of the pack size
+CISZA_S = 30  # a download with no data for this long stops with a message
+STARA_CZESC_S = 600  # a .czesc file unchanged this long is a leftover (a younger one may be another server's download)
 
 
 def teraz():
@@ -247,6 +263,15 @@ def id_z_pliku(nazwa):
     return re.sub(r"[^A-Za-z0-9_.-]", "-", os.path.splitext(nazwa)[0])[:80] or "paczka"
 
 
+def dysk_odlaczony(folder):
+    """Name of the external disk the folder lives on when that disk is not mounted (else None). An unplugged disk
+    must never turn into writes on the Mac's own disk (/Volumes/<name> can be a plain leftover folder)."""
+    czesci = os.path.abspath(folder).split(os.sep)
+    if len(czesci) > 2 and czesci[1] == "Volumes" and not os.path.ismount(os.path.join("/Volumes", czesci[2])):
+        return czesci[2]
+    return None
+
+
 class Katalog:
     """Voice packs in the packs folder: per pack only manifest.json, preset/settings and the cover are read (never
     subtitles.json — GTA VI has 373 thousand lines), in a background thread, cached outside the program folder and
@@ -271,9 +296,9 @@ class Katalog:
                 self.nr += 1
 
     def _brak_folderu(self, blad):
-        czesci = os.path.abspath(self.folder).split(os.sep)
-        if len(czesci) > 2 and czesci[1] == "Volumes" and not os.path.ismount(os.path.join("/Volumes", czesci[2])):
-            return "brak_dysku", (f"Nie widzę dysku „{czesci[2]}” z paczkami lektora. Podłącz dysk — katalog "
+        dysk = dysk_odlaczony(self.folder)
+        if dysk:
+            return "brak_dysku", (f"Nie widzę dysku „{dysk}” z paczkami lektora. Podłącz dysk — katalog "
                                   f"pokaże gry sam (albo kliknij „Sprawdź ponownie”).")
         if not os.path.exists(self.folder):
             return "brak_folderu", (f"Nie ma folderu gier ({self.folder}). Utwórz go i wrzuć do niego paczkę .zip "
@@ -468,6 +493,12 @@ class Katalog:
             w = self.gry.get(i)
             return dict(w) if w else None
 
+    def id_paczek(self):
+        """Pack ids (manifest `id`) of the packs on disk — the library hides these (matched by id, not by file name:
+        the GTA VI file on disk is named v4 and holds 1.0.2 while the list offers 1.0.4)."""
+        with self.lock:
+            return {w["id_paczki"] for w in self.gry.values() if w.get("id_paczki")}
+
     def okladka(self, i):
         """Cover bytes by catalogue id only (dictionary lookup — no path is ever built from the request)."""
         w = self.wpis(i)
@@ -487,6 +518,558 @@ class Katalog:
                    for w in self.gry.values()]
             return {"stan": self.stan, "komunikat": self.komunikat, "nr": self.nr,
                     "gry": sorted(gry, key=lambda g: g.get("nazwa", "").lower())}
+
+
+# ---------------------------------------------------------------- GameReader library (list + download)
+def typ_obrazka(dane):
+    if dane[:3] == b"\xff\xd8\xff":
+        return "image/jpeg"
+    if dane[:8] == b"\x89PNG\r\n\x1a\n":
+        return "image/png"
+    if dane[:4] == b"RIFF" and dane[8:12] == b"WEBP":
+        return "image/webp"
+    return None
+
+
+def mb(b):
+    return f"{b / 1e9:.1f} GB".replace(".", ",") if b >= 1e9 else f"{max(1, round(b / 1e6))} MB"
+
+
+def sprawdz_paczke(plik, rozmiar, id_spisu):
+    """A downloaded pack before it gets its .zip name: size as in the list, every member readable (testzip), the
+    GameReader 2.0 build (manifest.json, subtitles.json with lines, at least one recording) and the same pack id as the
+    list. NOT the list's `checksum` field — it is not the file's SHA-256 (measured 2026-11-22 on two packs). Some lines
+    without a recording are normal (the GTA VI pack that reads the demo 14/14 has 222 of 373 thousand) — only counted.
+    Returns lines without a recording; raises ValueError with the reason in Polish."""
+    if os.path.getsize(plik) != rozmiar:
+        raise ValueError(f"plik ma {os.path.getsize(plik)} B, a lista biblioteki podaje {rozmiar} B")
+    try:
+        with zipfile.ZipFile(plik) as z:
+            zly = z.testzip()
+            if zly:
+                raise ValueError(f"uszkodzony plik w środku paczki: {zly}")
+            nazwy = set(z.namelist())
+            if "manifest.json" not in nazwy or "subtitles.json" not in nazwy:
+                raise ValueError("brak manifest.json albo subtitles.json — to nie paczka GameReadera 2.0")
+            man = json.loads(z.read("manifest.json"))
+            napisy = json.loads(z.read("subtitles.json"))
+    except (zipfile.BadZipFile, json.JSONDecodeError, UnicodeDecodeError) as e:
+        raise ValueError(f"nie da się odczytać paczki ({e})")
+    if not isinstance(man, dict) or not isinstance(napisy, dict) or not isinstance(napisy.get("entries"), list):
+        raise ValueError("pliki opisu paczki mają zły kształt")
+    if man.get("id") is None or str(man["id"]) != id_spisu:  # a missing id too: library and "Moje gry" match by it
+        raise ValueError("w środku jest inna paczka niż na liście biblioteki")
+    ids = [str(e.get("id")) for e in napisy["entries"] if isinstance(e, dict) and e.get("id") is not None]
+    if not ids:
+        raise ValueError("paczka nie ma żadnej kwestii")
+    audio = {n[6:].rsplit(".", 1)[0] for n in nazwy if n.startswith("audio/") and "." in n[6:]}  # as lektor.Paczka
+    bez = sum(1 for i in ids if i not in audio)
+    if bez == len(ids):
+        raise ValueError("paczka nie ma żadnego nagrania")
+    return bez
+
+
+def przenies_bez_nadpisania(z, do):
+    """os.rename that never replaces an existing file: macOS renamex_np(RENAME_EXCL). A filesystem without it (measured
+    2026-11-25: exFAT on the WD disk answers ENOTSUP, APFS works) falls back to a check right before the rename."""
+    try:
+        import ctypes
+        import ctypes.util
+        libc = ctypes.CDLL(ctypes.util.find_library("c"), use_errno=True)
+        if libc.renamex_np(os.fsencode(z), os.fsencode(do), 0x4) == 0:
+            return
+        blad = ctypes.get_errno()
+    except (OSError, AttributeError):
+        blad = errno.ENOTSUP
+    if blad == errno.EEXIST:
+        raise FileExistsError(errno.EEXIST, "plik już istnieje", do)
+    if blad not in (errno.ENOTSUP, errno.EINVAL, errno.ENOSYS):
+        raise OSError(blad, os.strerror(blad), do)
+    if os.path.exists(do):
+        raise FileExistsError(errno.EEXIST, "plik już istnieje", do)
+    os.rename(z, do)
+
+
+class _Przekierowania(urllib.request.HTTPRedirectHandler):
+    """A redirect from the GameReader server is followed only to an address the same check allows (https, their host)."""
+
+    def __init__(self, dobry):
+        super().__init__()
+        self.dobry = dobry
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        if not self.dobry(newurl):
+            raise urllib.error.HTTPError(newurl, code, "przekierowanie poza serwer GameReadera", headers, fp)
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+class Przerwane(Exception):
+    pass
+
+
+class RozmiarInny(ValueError):
+    pass
+
+
+class Biblioteka:
+    """The GameReader library: their public list of voice packs, read in a background thread and saved in the cache
+    (offline = the last saved list, with its date), covers fetched in the background and served by pack id only, and
+    "Pobierz": one download at a time into the packs folder as `<name>.czesc` (the catalogue scan never sees it), checked
+    (sprawdz_paczke) and only then renamed to `.zip` — the tile then moves to "Moje gry" by itself. Every failure is a
+    message on the tile; the server never falls over. Runs outside the reader's lock: a download never blocks "Graj"."""
+
+    ODSWIEZ_S = 6 * 3600  # a fresh list this often
+    PONOW_S = 600  # offline / no list: try again this often
+    MAX_SPIS_B = 5 * 1024 * 1024
+    MAX_OKLADKA_B = 2 * 1024 * 1024
+
+    def __init__(self, pamiec, katalog, url=SPIS_URL, hosty=HOSTY_BIBLIOTEKI, https=True, wlaczone=POBIERANIE,
+                 na_info=print):
+        self.pamiec, self.katalog, self.url, self.hosty, self.https = pamiec, katalog, url, tuple(hosty), https
+        self.wlaczone, self.na_info = wlaczone, na_info
+        self.lock = threading.Lock()
+        self.czyta = threading.Lock()  # one list download at a time
+        self.stan, self.komunikat, self.data = "laduje", "Pobieram listę gier GameReadera…", None
+        self.wpisy = {}  # pack id -> checked entry
+        self.nr = 0
+        self.proba_t = 0.0  # last list fetch attempt
+        self.okladki_biegna = False
+        self.okladki_t = 0.0  # last cover pass
+        self.pob = None  # the current download (dict) or None
+        self.pob_lock = threading.Lock()  # held for the whole download
+        self.bledy = {}  # pack id -> message of its last failed download (shown on the tile, "Spróbuj ponownie")
+        self.bledy_serwera = set()  # those failed on the GameReader side (network, server, pack): the tile offers the site
+
+    # ---------------------------------------------------------- the list
+    def _dobry_adres(self, adres):
+        try:
+            u = urlsplit(str(adres))
+        except ValueError:
+            return False
+        return u.scheme in (("https",) if self.https else ("https", "http")) and u.hostname in self.hosty
+
+    def _parsuj(self, dane):
+        """Checked entries from the raw list (foreign data: wrong-shaped or off-host entries are dropped)."""
+        if not isinstance(dane, dict) or not isinstance(dane.get("voice_packs"), list):
+            raise ValueError("lista ma inny kształt niż się spodziewam")
+        wpisy = {}
+        for v in dane["voice_packs"]:
+            if not isinstance(v, dict):
+                continue
+            i, rozmiar = str(v.get("id") or ""), v.get("file_size_bytes")
+            if not ID_GRY.fullmatch(i) or i in wpisy or not isinstance(rozmiar, int) or isinstance(rozmiar, bool) \
+                    or rozmiar <= 0 or not self._dobry_adres(v.get("download_url")):
+                continue
+            wym = []
+            for r in v.get("requirements") or []:
+                if isinstance(r, dict) and str(r.get("description") or "").strip():
+                    link = str(r.get("url") or "")
+                    wym.append({"tekst": str(r["description"]).strip()[:800],
+                                "url": link if re.fullmatch(r"https://[^\s\"'<>]{4,300}", link) else None})
+            wpisy[i] = {"id": i, "nazwa": str(v.get("name") or i)[:200], "wersja": str(v.get("version") or "")[:40],
+                        "autor": str(v.get("author") or "")[:120], "opis": str(v.get("description") or "")[:4000],
+                        "rozmiar": rozmiar, "url": str(v["download_url"]),
+                        "okladka_url": str(v["cover_url"]) if self._dobry_adres(v.get("cover_url")) else None,
+                        "na_macu": bool(v.get("has_preset")), "wtyczka": bool(v.get("has_plugin")), "wymagania": wym}
+        if not wpisy:
+            raise ValueError("lista nie ma żadnej paczki")
+        return wpisy
+
+    def _plik_spisu(self):
+        return os.path.join(self.pamiec, "spis.json")
+
+    def wczytaj_zapisany(self):
+        """At start: the list saved last time (shown at once; the fresh one replaces it when it arrives)."""
+        try:
+            with open(self._plik_spisu(), encoding="utf-8") as f:
+                zapis = json.load(f)
+            wpisy, data = self._parsuj(zapis["spis"]), float(zapis["pobrano"])
+        except (OSError, ValueError, KeyError, TypeError):
+            return False
+        with self.lock:
+            self.wpisy, self.data = wpisy, data
+            self.stan, self.komunikat = "offline", f"Pokazuję listę zapisaną {self._kiedy(data)} — sprawdzam nowszą…"
+            self.nr += 1
+        return True
+
+    @staticmethod
+    def _kiedy(t):
+        return time.strftime("%d.%m.%Y %H:%M", time.localtime(t))
+
+    def _otworz(self, adres, timeout, dobry=None):
+        """GET with the generic program name; redirects only to addresses `dobry` allows (default: the list's hosts)."""
+        opener = urllib.request.build_opener(_Przekierowania(dobry or self._dobry_adres))
+        return opener.open(urllib.request.Request(adres, headers={"User-Agent": UA}), timeout=timeout)
+
+    def _ten_sam_host(self, adres):
+        a, b = urlsplit(str(adres)), urlsplit(str(self.url))
+        return (a.scheme, a.hostname) == (b.scheme, b.hostname)
+
+    def _pobierz_dane(self, adres, limit, dobry=None):
+        with self._otworz(adres, 20, dobry) as r:
+            dane = r.read(limit + 1)
+        if len(dane) > limit:
+            raise ValueError("odpowiedź większa niż się spodziewam")
+        return dane
+
+    def odswiez_spis(self):
+        """Fetch the list now (background thread). A failure keeps the saved list and says so."""
+        if not self.url or not self.czyta.acquire(blocking=False):
+            return
+        try:
+            self.proba_t = time.time()
+            try:
+                surowe = json.loads(self._pobierz_dane(self.url, self.MAX_SPIS_B, self._ten_sam_host))
+                wpisy = self._parsuj(surowe)
+            except Exception as e:  # network, HTTP, JSON, shape: the saved list stays, the reason is on screen
+                powod = self._powod(e)
+                with self.lock:
+                    if self.wpisy:
+                        self.stan, self.komunikat = "offline", (
+                            f"Nie mogę pobrać aktualnej listy gier ({powod}). Pokazuję listę zapisaną {self._kiedy(self.data)}.")
+                    else:
+                        self.stan, self.komunikat = "brak", (
+                            f"Nie mogę pobrać listy gier GameReadera ({powod}), a nie mam zapisanej. Sprawdź internet — "
+                            f"spróbuję znów za kilka minut. „Moje gry” działają bez niej.")
+                    self.nr += 1
+                self.na_info(f"! Biblioteka: nie pobrałem listy gier ({e})")
+                return
+            t = time.time()
+            try:  # atomic: a half-written list must never be read back as the "saved" one
+                os.makedirs(self.pamiec, exist_ok=True)
+                tmp = self._plik_spisu() + ".tmp"
+                with open(tmp, "w", encoding="utf-8") as f:
+                    json.dump({"pobrano": t, "spis": surowe}, f, ensure_ascii=False)
+                os.replace(tmp, self._plik_spisu())
+            except OSError as e:
+                self.na_info(f"! Biblioteka: nie zapisałem listy w pamięci podręcznej ({e})")
+            with self.lock:
+                self.wpisy, self.data, self.stan, self.komunikat = wpisy, t, "ok", None
+                self.nr += 1
+        finally:
+            self.czyta.release()
+        self._okladki_w_tle()
+
+    @staticmethod
+    def _powod(e):
+        """Why the list did not come, in words for the screen (the exact error goes to the log)."""
+        if isinstance(e, urllib.error.HTTPError):
+            return f"serwer GameReadera odpowiedział błędem {e.code}"
+        if isinstance(e, (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError)):
+            return "brak połączenia z internetem albo serwer GameReadera nie odpowiada"
+        return "lista przyszła w nieoczekiwanej postaci"
+
+    def pilnuj(self):
+        """Watchdog (every 5 s): a fresh list every few hours; while offline, a retry every few minutes; covers that
+        failed (network) are tried again every few minutes too."""
+        co = self.ODSWIEZ_S if self.stan == "ok" else self.PONOW_S
+        if self.url and time.time() - self.proba_t > co and not self.czyta.locked():
+            threading.Thread(target=self.odswiez_spis, daemon=True).start()
+        elif self.wpisy and time.time() - self.okladki_t > self.PONOW_S:
+            self._okladki_w_tle()
+
+    def uruchom(self):
+        self.wczytaj_zapisany()
+        if self.url:
+            threading.Thread(target=self.odswiez_spis, daemon=True).start()
+        else:
+            with self.lock:
+                self.stan, self.komunikat = "wylaczona", None
+
+    # ---------------------------------------------------------- covers
+    def _plik_okladki(self, i):
+        return os.path.join(self.pamiec, "okladki", i + ".jpg")  # i passed ID_GRY (no slash, no "..": dots only inside)
+
+    def _okladki_w_tle(self):
+        with self.lock:
+            if self.okladki_biegna:
+                return
+            self.okladki_biegna = True
+        threading.Thread(target=self._okladki, daemon=True).start()
+
+    def _okladki(self):
+        self.okladki_t = time.time()
+        try:
+            with self.lock:
+                brak = [(i, w["okladka_url"]) for i, w in self.wpisy.items()
+                        if w["okladka_url"] and not os.path.exists(self._plik_okladki(i))]
+            nowe = 0
+            for n, (i, adres) in enumerate(brak):
+                try:
+                    dane = self._pobierz_dane(adres, self.MAX_OKLADKA_B)
+                    if typ_obrazka(dane) is None:  # two covers in the list are WebP named .jpg (2026-11-25)
+                        raise ValueError("to nie obrazek JPEG, PNG ani WebP")
+                    os.makedirs(os.path.dirname(self._plik_okladki(i)), exist_ok=True)
+                    with open(self._plik_okladki(i) + ".tmp", "wb") as f:
+                        f.write(dane)
+                    os.replace(self._plik_okladki(i) + ".tmp", self._plik_okladki(i))
+                    nowe += 1
+                except Exception as e:
+                    self.na_info(f"! Biblioteka: okładka {i} nie pobrana ({e})")
+                if nowe and (n % 24 == 23 or n == len(brak) - 1):  # the panel refetches the list in a few batches
+                    with self.lock:
+                        self.nr += 1
+        finally:
+            with self.lock:
+                self.okladki_biegna = False
+
+    def okladka(self, i):
+        """Cover bytes by pack id — only an id from the list (dictionary lookup), never a path from the request."""
+        with self.lock:
+            if i not in self.wpisy:
+                return None
+        try:
+            with open(self._plik_okladki(i), "rb") as f:
+                return f.read()
+        except OSError:
+            return None
+
+    def wymagania(self, id_paczki):
+        with self.lock:
+            w = self.wpisy.get(id_paczki or "")
+            return list(w["wymagania"]) if w else []
+
+    # ---------------------------------------------------------- what the panel shows
+    def postep(self):
+        with self.lock:
+            p = self.pob
+            if not p:
+                return None
+            return {"id": p["id"], "nazwa": p["nazwa"], "faza": p["faza"], "pobrane": p["pobrane"],
+                    "rozmiar": p["rozmiar"], "procent": int(100 * p["pobrane"] / p["rozmiar"]) if p["rozmiar"] else 0}
+
+    def trwa(self):
+        return self.pob_lock.locked()
+
+    def publiczne(self):
+        na_dysku = self.katalog.id_paczek()
+        with self.lock:
+            p = self.pob
+            gry = []
+            for i, w in self.wpisy.items():
+                if i in na_dysku:
+                    continue
+                g = {k: v for k, v in w.items() if k not in ("url", "okladka_url")}
+                g["okladka"] = os.path.exists(self._plik_okladki(i))
+                if not w["na_macu"]:
+                    g["stan"], g["stan_opis"] = "nie_na_macu", (
+                        "Ta paczka nie ma obszaru napisów (presetu)" + (" — działa przez wtyczkę programu GameReader na PC"
+                                                                        if w["wtyczka"] else "")
+                        + ". Czytnik na Macu nie wie, gdzie na ekranie szukać tekstu, więc na razie jej nie pobieram.")
+                elif p and p["id"] == i:
+                    g["stan"], g["stan_opis"] = p["faza"], ("Pobieram paczkę…" if p["faza"] == "pobiera" else
+                                                             "Sprawdzam pobraną paczkę (czy jest cała)…")
+                elif i in self.bledy:
+                    g["stan"], g["stan_opis"] = "blad_pobierania", self.bledy[i]
+                    g["reczne"] = i in self.bledy_serwera  # not for a missing disk or low space: the site would not help
+                else:
+                    g["stan"], g["stan_opis"] = "nie_na_dysku", f"W bibliotece GameReadera — paczka ma {mb(w['rozmiar'])}."
+                g["stan_nazwa"] = BIBLIOTEKA_STANY.get(g["stan"], "")
+                gry.append(g)
+            return {"stan": self.stan, "komunikat": self.komunikat, "data": self.data,
+                    "data_tekst": self._kiedy(self.data) if self.data else None, "nr": self.nr,
+                    "pobieranie": self.wlaczone, "wszystkich": len(self.wpisy),
+                    "gry": sorted(gry, key=lambda g: g["nazwa"].lower())}
+
+    # ---------------------------------------------------------- download
+    def sprzataj(self):
+        """Leftover `.czesc` files (and their `._` twins on exFAT disks) of a download cut short. Only old ones: a
+        younger file may be another server's download in progress (a test server on the same folder)."""
+        folder = self.katalog.folder
+        if dysk_odlaczony(folder):
+            return
+        try:
+            nazwy = os.listdir(folder)
+        except OSError:
+            return
+        for n in nazwy:
+            if n.endswith(".czesc"):
+                plik = os.path.join(folder, n)
+                try:
+                    if time.time() - os.path.getmtime(plik) > STARA_CZESC_S:
+                        os.remove(plik)
+                        self.na_info(f"Usunąłem resztkę przerwanego pobierania: {n}")
+                except OSError:
+                    pass
+
+    def _nazwa_pliku(self, w, folder):
+        """`<name>.zip` from the download address (decoded, cleaned like a catalogue id); never an existing file."""
+        baza = id_z_pliku(unquote(os.path.basename(urlsplit(w["url"]).path))) or id_z_pliku(w["nazwa"])
+        nazwa, nr = baza + ".zip", 2
+        while os.path.exists(os.path.join(folder, nazwa)) or os.path.exists(os.path.join(folder, nazwa + ".czesc")):
+            nazwa, nr = f"{baza[:76]}-{nr}.zip", nr + 1
+        return nazwa
+
+    def pobierz(self, i):
+        if not self.wlaczone:
+            return {"ok": False, "blad": "Pobieranie z programu jest w tej instalacji wyłączone — pobierz paczkę ze strony "
+                                         "gamereader.pl i wrzuć plik .zip do folderu gier."}
+        with self.lock:
+            w = self.wpisy.get(str(i))
+        if not w:
+            return {"ok": False, "blad": "Nie ma tej gry na liście biblioteki — lista mogła się zmienić. Odśwież stronę."}
+        if not w["na_macu"]:
+            return {"ok": False, "blad": "Ta paczka nie ma obszaru napisów — czytnik na Macu jej nie odczyta, więc jej "
+                                         "nie pobieram."}
+        if w["id"] in self.katalog.id_paczek():
+            return {"ok": False, "blad": f"„{w['nazwa']}” już jest w „Moje gry”."}
+        if not self.pob_lock.acquire(blocking=False):  # one at a time: a second "Pobierz" is refused, not queued
+            p = self.postep()
+            return {"ok": False, "blad": f"Pobieram już „{p['nazwa'] if p else 'inną grę'}” — poczekaj, aż skończy, "
+                                         f"albo przerwij tamto pobieranie."}
+        try:
+            folder = self.katalog.folder
+            dysk = dysk_odlaczony(folder)  # checked BEFORE any makedirs: nothing may land on the Mac's own disk
+            if dysk:
+                raise ValueError(f"Nie widzę dysku „{dysk}”, na którym leży folder gier. Podłącz dysk i kliknij "
+                                 f"„Pobierz” jeszcze raz — nic nie zapisuję na dysku Maca.")
+            try:
+                os.makedirs(folder, exist_ok=True)
+                wolne = shutil.disk_usage(folder).free
+            except OSError as e:
+                raise ValueError(f"Nie mogę pisać do folderu gier ({e}). Sprawdź dysk i spróbuj ponownie.")
+            if wolne < w["rozmiar"] + ZAPAS_B:
+                raise ValueError(f"Za mało miejsca na dysku z grami: paczka ma {mb(w['rozmiar'])}, wolne jest "
+                                 f"{mb(wolne)} (zostawiam też {mb(ZAPAS_B)} zapasu). Zwolnij miejsce i spróbuj ponownie.")
+            self.sprzataj()
+            nazwa = self._nazwa_pliku(w, folder)
+        except ValueError as e:
+            self.pob_lock.release()
+            with self.lock:
+                self.bledy[w["id"]] = str(e)
+                self.nr += 1
+            return {"ok": False, "blad": str(e)}
+        except BaseException:
+            self.pob_lock.release()
+            raise
+        with self.lock:
+            self.bledy.pop(w["id"], None)
+            self.bledy_serwera.discard(w["id"])
+            self.pob = {"id": w["id"], "nazwa": w["nazwa"], "rozmiar": w["rozmiar"], "pobrane": 0, "faza": "pobiera",
+                        "przerwij": threading.Event(), "watek": None, "gniazdo": None,
+                        "czesc": os.path.join(folder, nazwa + ".czesc"), "utworzony": False}
+            self.nr += 1
+            try:
+                self.pob["watek"] = threading.Thread(target=self._pobieraj, args=(w, folder, nazwa), daemon=True)
+                self.pob["watek"].start()
+            except BaseException:  # no worker = nobody would ever release the one-download lock
+                self.pob = None
+                self.pob_lock.release()
+                raise
+        self.na_info(f"Pobieram z biblioteki: {w['nazwa']} ({mb(w['rozmiar'])}) → {nazwa}")
+        return {"ok": True}
+
+    def przerwij(self, czekaj_s=0):
+        with self.lock:
+            p = self.pob
+        if not p:
+            return {"ok": False, "blad": "Nic się teraz nie pobiera."}
+        p["przerwij"].set()
+        gniazdo = p.get("gniazdo")
+        if gniazdo is not None:
+            try:  # wakes a read waiting for data (up to CISZA_S) at once; close() could wait for that read's buffer lock
+                gniazdo.shutdown(socket.SHUT_RDWR)
+            except OSError:
+                pass
+        if czekaj_s and p["watek"]:
+            p["watek"].join(czekaj_s)
+            if p["watek"].is_alive() and p.get("utworzony"):  # the process is about to end: never leave our .czesc
+                try:
+                    os.remove(p["czesc"])
+                except OSError:
+                    pass
+        return {"ok": True}
+
+    def _pobieraj(self, w, folder, nazwa):
+        cel = os.path.join(folder, nazwa)
+        czesc = cel + ".czesc"
+        p = self.pob
+        try:
+            f = open(czesc, "xb")  # exclusive: never another download's file
+            p["utworzony"] = True
+            with f, self._otworz(w["url"], CISZA_S) as r:
+                p["gniazdo"] = getattr(getattr(r.fp, "raw", None), "_sock", None)  # for "Przerwij" (shutdown)
+                while True:
+                    if p["przerwij"].is_set():
+                        raise Przerwane()
+                    blok = r.read1(1 << 20)  # whatever has arrived (bar and "Przerwij" stay live); CISZA_S at most
+                    if not blok:
+                        break
+                    f.write(blok)
+                    with self.lock:
+                        p["pobrane"] += len(blok)
+                    if p["pobrane"] > w["rozmiar"]:
+                        raise RozmiarInny("serwer wysyła więcej danych, niż podaje lista biblioteki")
+            if p["pobrane"] != w["rozmiar"]:
+                raise RozmiarInny(f"pobrałem {int(100 * p['pobrane'] / w['rozmiar'])} % paczki")
+            with self.lock:
+                p["faza"] = "sprawdza"
+                self.nr += 1
+            bez = sprawdz_paczke(czesc, w["rozmiar"], w["id"])
+            if p["przerwij"].is_set():  # "Przerwij" / "Wyłącz program" during the check: nothing is published
+                raise Przerwane()
+            try:
+                przenies_bez_nadpisania(czesc, cel)  # never overwrite a pack (another one took the name meanwhile)
+            except FileExistsError:
+                raise ValueError(f"w folderze gier pojawił się już plik {nazwa}")
+            self.na_info(f"Pobrane i sprawdzone: {w['nazwa']} → {nazwa}"
+                         + (f" ({bez} kwestii bez nagrania — czytnik je pomija)" if bez else ""))
+            threading.Thread(target=self.katalog.skanuj, daemon=True).start()  # the tile moves to "Moje gry" at once
+        except Exception as e:
+            if isinstance(e, Przerwane) or p["przerwij"].is_set():  # a closed connection after "Przerwij" is a cancel
+                self.na_info(f"Przerwane pobieranie: {w['nazwa']} — nic nie zapisałem.")
+                return
+            blad = self._opis_bledu(e, folder)
+            if isinstance(e, RozmiarInny):  # a new pack version may have replaced the file after our list was read
+                self.odswiez_spis()
+                with self.lock:
+                    nowy = self.wpisy.get(w["id"])
+                if nowy and (nowy["rozmiar"], nowy["url"]) != (w["rozmiar"], w["url"]):
+                    blad = (f"Paczka na serwerze zmieniła się w trakcie (nowa wersja {nowy['wersja']}, {mb(nowy['rozmiar'])}). "
+                            f"Lista jest już odświeżona — kliknij „Pobierz” jeszcze raz.")
+            serwer = isinstance(e, (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError, ssl.SSLError,
+                                    socket.gaierror)) or not isinstance(e, OSError)  # other OSError = our disk (gone, full)
+            with self.lock:
+                self.bledy[w["id"]] = blad
+                if serwer:
+                    self.bledy_serwera.add(w["id"])
+            self.na_info(f"! Pobieranie {w['nazwa']} nie udało się: {blad} [{type(e).__name__}: {e}]")
+        finally:
+            if p["utworzony"]:  # only our own file (open "xb" failed = someone else's download — left alone)
+                try:
+                    os.remove(czesc)
+                except OSError:
+                    pass
+            with self.lock:
+                self.pob = None
+                self.nr += 1
+            self.pob_lock.release()
+
+    @staticmethod
+    def _opis_bledu(e, folder):
+        if isinstance(e, urllib.error.HTTPError):
+            return f"Serwer GameReadera odpowiedział błędem {e.code}. Spróbuj ponownie za chwilę."
+        if isinstance(e, (TimeoutError, socket.timeout)):
+            return (f"Serwer GameReadera przestał wysyłać dane ({CISZA_S} s bez postępu). Sprawdź internet i spróbuj "
+                    f"ponownie — nic nie zapisałem.")
+        if isinstance(e, urllib.error.URLError) or isinstance(e, (ConnectionError, socket.gaierror)):
+            return "Brak połączenia z serwerem GameReadera. Sprawdź internet i spróbuj ponownie — nic nie zapisałem."
+        if isinstance(e, OSError):
+            dysk = dysk_odlaczony(folder)
+            if dysk:
+                return f"Dysk „{dysk}” zniknął w trakcie pobierania. Podłącz go i spróbuj ponownie — nic nie zapisałem."
+            if getattr(e, "errno", None) == 28:
+                return "Skończyło się miejsce na dysku z grami. Zwolnij miejsce i spróbuj ponownie — nic nie zapisałem."
+            return f"Nie mogę zapisać paczki w folderze gier ({e}). Sprawdź dysk i spróbuj ponownie."
+        if isinstance(e, RozmiarInny):
+            return f"Połączenie z serwerem GameReadera urwało się w trakcie ({e}). Nic nie zapisałem — spróbuj ponownie."
+        if isinstance(e, ValueError):
+            return f"Pobrana paczka jest niepełna albo uszkodzona: {e}. Usunąłem ją — spróbuj ponownie."
+        return f"Pobieranie przerwał nieoczekiwany błąd ({e}). Spróbuj ponownie."
+
+
+BIBLIOTEKA_STANY = {"nie_na_dysku": "Do pobrania", "nie_na_macu": "Na razie nie na Macu", "pobiera": "Pobieram…",
+                    "sprawdza": "Sprawdzam…", "blad_pobierania": "Nie pobrano"}
 
 
 # ---------------------------------------------------------------- phone as the speaker
@@ -512,9 +1095,14 @@ class GlosTelefon:
 
 
 class Stan:
-    def __init__(self, ustawienia=None, folder=None, pamiec=None, sprawdzone=SPRAWDZONE):
+    def __init__(self, ustawienia=None, folder=None, pamiec=None, sprawdzone=SPRAWDZONE, spis=None,
+                 hosty=HOSTY_BIBLIOTEKI, https=True, pobieranie=POBIERANIE):
+        """spis = address of the library list; None (tests that do not ask for it) = no library, no network."""
         self.plik_ust = ustawienia or USTAWIENIA
         self.katalog = Katalog(folder or L.PACZKI, pamiec or PAMIEC, sprawdzone)
+        # library cache inside the catalogue cache: a dot name can never be a catalogue id (hidden files are not scanned)
+        self.biblioteka = Biblioteka(os.path.join(pamiec or PAMIEC, ".biblioteka"), self.katalog, url=spis, hosty=hosty,
+                                     https=https, wlaczone=pobieranie, na_info=self.info)
         self.lock = threading.RLock()
         # THE one lock for game change, start, stop, sample and pack reload: taken without waiting — busy = a refusal
         # with a message, never a queue (two screens clicking at once must not leave two voices or a half-swapped pack)
@@ -548,9 +1136,11 @@ class Stan:
             self.nowy_klucz()
 
     def uruchom(self):
-        """Background start: scan the catalogue, then load the chosen game (holding the one lock)."""
+        """Background start: scan the catalogue, then load the chosen game (holding the one lock); the library list."""
         self.sterowanie.acquire()
         threading.Thread(target=self._odswiez, daemon=True).start()
+        self.biblioteka.sprzataj()
+        self.biblioteka.uruchom()
 
     # ---------------------------------------------------------- pack / game
     def wybrana(self):
@@ -647,6 +1237,7 @@ class Stan:
         """Called by the watchdog every few seconds: catalogue changes (a pack added or removed), and the pack of a
         running session vanishing (disk unplugged) = stop with a message, never silence."""
         threading.Thread(target=self.katalog.skanuj, daemon=True).start()
+        self.biblioteka.pilnuj()
         with self.lock:
             s, p = self.sesja, self.p
         if s is not None and p is not None and not os.path.exists(p.zip.filename):
@@ -1076,6 +1667,8 @@ class Stan:
                 "paczka": (self.p.manifest.get("name") if self.p else None),
                 "gra": {"id": self.gra, "nazwa": w.get("nazwa") if w else None} if self.gra else None,
                 "sesja_gry": self.sesja_gry, "katalog_nr": self.katalog.nr, "alarm": self.alarm,
+                # the library list changes with its own number AND with the catalogue (a pack on disk leaves the list)
+                "biblioteka_nr": f"{self.biblioteka.nr}.{self.katalog.nr}", "pobieranie": self.biblioteka.postep(),
                 "wylacz": self.wylacz,  # every open window and phone shows "Program wyłączony", not a lost connection
                 "dziala": s is not None, "zrodlo": s["zrodlo"] if s else None, "profil": s["profil"] if s else None,
                 "od": int(time.time() - s["start"]) if s else 0,
@@ -1104,11 +1697,11 @@ class Obsluga(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def _wyslij(self, kod, tresc, typ="application/json; charset=utf-8", naglowki=()):
+    def _wyslij(self, kod, tresc, typ="application/json; charset=utf-8", naglowki=(), cache="no-store"):
         dane = tresc if isinstance(tresc, bytes) else json.dumps(tresc, ensure_ascii=False).encode()
         self.send_response(kod)
         self.send_header("Content-Type", typ)
-        self.send_header("Cache-Control", "no-store")
+        self.send_header("Cache-Control", cache)
         self.send_header("Content-Length", str(len(dane)))
         for k, v in naglowki:
             self.send_header(k, v)
@@ -1203,9 +1796,20 @@ class Obsluga(BaseHTTPRequestHandler):
                 return self._plik(plik, TYPY[plik.rsplit(".", 1)[1]])
         if sciezka == "/api/katalog":
             kat = STAN.katalog.publiczne()
+            for g in kat["gry"]:  # the pack's own requirements win; a pack without them gets the library list's words
+                if not g.get("wymagania") and g.get("id_paczki"):
+                    g["wymagania"] = STAN.biblioteka.wymagania(g["id_paczki"])
             with STAN.lock:
                 kat.update(wybrana=STAN.gra, ustawiona=STAN.ust.get("gra"))
             return self._wyslij(200, kat)
+        if sciezka == "/api/biblioteka":
+            return self._wyslij(200, STAN.biblioteka.publiczne())
+        m = re.fullmatch(r"/api/biblioteka/okladka/([A-Za-z0-9_.-]{1,80})", sciezka)
+        if m:  # pack id from the list only (dictionary lookup); covers never change for an id, so the phone may keep them
+            dane = STAN.biblioteka.okladka(m.group(1))
+            if dane is None:
+                return self._wyslij(404, {"blad": "nie ma takiej okładki"})
+            return self._wyslij(200, dane, typ_obrazka(dane) or "image/jpeg", cache="private, max-age=86400")
         m = re.fullmatch(r"/api/okladka/([A-Za-z0-9_.-]{1,80})", sciezka)
         if m:  # the id is only a dictionary key into the catalogue — never part of a path
             dane = STAN.katalog.okladka(m.group(1))
@@ -1310,6 +1914,14 @@ class Obsluga(BaseHTTPRequestHandler):
             return self._wyslij(200, {"ok": True})
         if sciezka == "/api/paczka":
             return self._wyslij(200, STAN.odswiez())
+        if sciezka == "/api/biblioteka/pobierz":  # from the phone too (behind the pilot key): the pack lands on the Mac
+            return self._wyslij(200, STAN.biblioteka.pobierz(dane.get("id")))
+        if sciezka == "/api/biblioteka/przerwij":
+            return self._wyslij(200, STAN.biblioteka.przerwij())
+        if sciezka == "/api/biblioteka/odswiez":
+            if STAN.biblioteka.url:
+                threading.Thread(target=STAN.biblioteka.odswiez_spis, daemon=True).start()
+            return self._wyslij(200, {"ok": True})
         if sciezka == "/api/folder-paczek" and not siec:
             os.makedirs(STAN.katalog.folder, exist_ok=True)
             subprocess.Popen(["open", STAN.katalog.folder])
@@ -1344,7 +1956,16 @@ def straznik(serwer):
         with STAN.lock:
             zamknij_o, wylacz = STAN.zamknij_o, STAN.wylacz
         nikt = not STAN.obecni() and time.time() - STAN.start_t > LIMIT[("mac", False)]
+        if not wylacz and STAN.biblioteka.trwa() and ((zamknij_o and time.time() > zamknij_o) or nikt):
+            # closing the panel window must not cut a download: the server waits for it — but the reader goes silent
+            # now, as it always did 5 s after the window closed (it must not keep talking for minutes of a big pack)
+            if STAN.sesja is not None:
+                STAN.stop(czekaj=True)
+                STAN.info("Panel zamknięty — lektor zatrzymany; trwa pobieranie gry, kończę program, gdy się skończy.")
+            continue
         if wylacz or (zamknij_o and time.time() > zamknij_o) or nikt:
+            if STAN.biblioteka.trwa():  # "Wyłącz program": the download stops and its .czesc file is removed
+                STAN.biblioteka.przerwij(czekaj_s=5)
             STAN.info("Program wyłączony przyciskiem — kończę lektora." if wylacz else "Panel zamknięty — kończę lektora.")
             if wylacz:
                 time.sleep(1.5)  # the other windows and phones poll every second: let them read "wylacz" first
@@ -1368,7 +1989,7 @@ def main():
         serwer = Serwer(("::", PORT), Obsluga)
     except OSError:
         sys.exit(f"Port {PORT} zajęty — panel już działa? Otwórz http://127.0.0.1:{PORT}/")
-    STAN = Stan()
+    STAN = Stan(spis=SPIS_URL)
     STAN.uruchom()
     threading.Thread(target=straznik, args=(serwer,), daemon=True).start()
     STAN.info(f"Panel lektora gier: http://127.0.0.1:{PORT}/ · pilot w sieci: {STAN.bonjour or adres_ip()}:{PORT}")

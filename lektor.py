@@ -36,11 +36,11 @@ from rapidfuzz import fuzz, process
 FOLDER = os.path.dirname(os.path.abspath(__file__))
 PODGLAD = os.path.join(FOLDER, "podglad.png")
 LOKALNE = os.path.join(FOLDER, "lokalne.env")  # per-install paths, outside git (see .gitignore)
-ZMIENNE_LOKALNE = ("LEKTOR_PACZKI", "LEKTOR_PACZKA", "LEKTOR_DEMO")
+ZMIENNE_LOKALNE = ("LEKTOR_PACZKI", "LEKTOR_PACZKA", "LEKTOR_DEMO", "LEKTOR_POBIERANIE")  # last: library download on/off
 
 
 def wczytaj_lokalne(path=LOKALNE):
-    """Optional KEY=VALUE file next to the program (e.g. packs on an external disk). Only the path variables
+    """Optional KEY=VALUE file next to the program (e.g. packs on an external disk). Only the variables
     above are taken; a variable already set in the environment wins. Values may be quoted ("…" or '…');
     an unquoted value ends at " #" (comment). BOM and CRLF are tolerated."""
     try:
