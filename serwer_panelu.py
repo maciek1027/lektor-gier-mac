@@ -9,7 +9,7 @@ Profile "iphone": matched lines are not played on the Mac but sent to the phone 
 Game change: one lock covers change, start and stop; the reader is confirmed stopped before the pack is swapped,
 and every phone event carries the game-session number `g` (line numbers are per pack — a line of the old game
 must never be played from the new one).
-Started by "GTA Lektor.app"; log in ~/Library/Logs/gta-lektor.log.
+Started by "Lektor Gier na konsoli.app"; log in ~/Library/Logs/gta-lektor.log.
 Test instance: LEKTOR_PORT=8798 LEKTOR_USTAWIENIA=/tmp/x.json .venv/bin/python serwer_panelu.py
 """
 import base64

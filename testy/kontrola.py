@@ -122,6 +122,15 @@ MUTACJE = [
     ("wątek głosu kończy się przy zamknięciu", "lektor.py",
      "                while not self.q and not self.koniec:", "                while not self.q:",
      T + "TestSprzatanie.test_start_stop_nie_zostawia_folderow_tej_sesji"),
+    ("ikona iPhone'a bez przezroczystości (E1e)", "aplikacja/ikona.py",
+     "        body.convert(\"RGB\").save(out)", "        body.save(out)",
+     "testy.test_ikona.TestIkona.test_ikona_iphonea_bez_przezroczystosci"),
+    ("ikona Docka przycięta do kształtu macOS (E1e)", "aplikacja/ikona.py",
+     "    icon.paste(canvas, (0, 0), mask)", "    icon.paste(canvas, (0, 0))",
+     "testy.test_ikona.TestIkona.test_ikona_docka_ma_pelne_wnetrze_i_przezroczyste_rogi"),
+    ("brak obrazu ikony = błąd, nie inna ikona (E1e)", "aplikacja/ikona.py",
+     "        return 2\n", "        art = Image.new(\"RGBA\", (S, S), (0, 0, 0, 255))\n",
+     "testy.test_ikona.TestIkona.test_brak_obrazu_to_blad_nie_inna_ikona"),
     ("wyjście programu sprząta resztę folderów", "lektor.py",
      "    for sciezka in list(TYMCZASOWE):\n        usun_tymczasowy(sciezka)",
      "    for sciezka in list(TYMCZASOWE):\n        pass",
@@ -135,6 +144,9 @@ def kopia():
         shutil.copy2(os.path.join(KOD, n), cel)
     os.makedirs(os.path.join(cel, "panel"))
     shutil.copy2(os.path.join(KOD, "panel", "index.html"), os.path.join(cel, "panel"))
+    os.makedirs(os.path.join(cel, "aplikacja"))
+    for n in ("ikona.py", "ikona-zrodlo.jpg"):
+        shutil.copy2(os.path.join(KOD, "aplikacja", n), os.path.join(cel, "aplikacja"))
     shutil.copytree(TU, os.path.join(cel, "testy"), ignore=shutil.ignore_patterns("__pycache__"))
     return cel
 

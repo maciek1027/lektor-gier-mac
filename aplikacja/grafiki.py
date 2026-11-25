@@ -5,7 +5,7 @@ as an option).
 Optional: the art is already in panel/grafiki/. Needs your own kie.ai key in KIE_API_KEY (never printed).
 Usage:
   grafiki.py --saldo                                        # credit balance only
-  grafiki.py [--silnik nb|gpt] [--styl S] [--cel DIR] [nazwa…]  # render all (or the named) images as PNG
+  grafiki.py [--silnik nb|gpt] [--styl S] [--cel DIR] [--wzor sketch.png] [nazwa…]  # render all (or the named) images as PNG
 Default target: ../panel/grafiki/ (the panel uses JPEG copies named <nazwa>.jpg).
 """
 import argparse
@@ -32,6 +32,18 @@ STYLE = {
                "Minimal isometric line illustration, even off-white strokes, a few flat fills in slate grey and a "
                "single calm teal accent, precise and tidy, like a premium app onboarding icon. "),
 }
+# Icons only (operator 2026-11-25: the muted icons were "szarobure", today's vivid sunset icon is liked): today's palette.
+STYLE["zywy"] = ("Original artwork, no text, no letters, no logos, no brand names, no real products, no people. Bold flat "
+                 "vector illustration with vivid saturated colours: a deep purple to hot magenta to warm orange vertical "
+                 "gradient, crisp glossy white and golden-yellow subject with a soft dark purple shadow, cheerful premium "
+                 "app-icon quality, no neon glow lines. ")
+# Icons, round 3 (operator 2026-11-25: the app icon in the FAMILY of the "Jak słuchasz?" pictures, but stronger than the
+# first, too grey icons): the same flat device-icon look, lighter objects, two accents, a richer background.
+STYLE["rodzina"] = ("Original artwork, no text, no letters, no logos, no brand names, no real products, no people. Clean flat "
+                    "vector illustration in the style of soft modern device icons: rounded geometric shapes, light grey and "
+                    "white objects with gentle gradient shading, two clear accents — warm orange (#f28c28) and teal (#2bb3a3) — "
+                    "and a soft long shadow; background a rich deep blue (#1b2a4a) to slate radial gradient with a gentle light "
+                    "glow behind the subject; high contrast, bold and readable at 32 pixels. ")
 STYL_DOMYSLNY = "plaski"
 OBIEKT = ("Single centered object group on a plain smooth dark slate (#1d2028) background, generous empty margin "
           "around it, soft shadow under it, no glow, no neon. ")
@@ -52,7 +64,28 @@ OBRAZY = {
             "sound wave arcs coming from its bottom speaker, a wireless game controller lying in front of it. "),
 }
 
+# Dock icon / iPhone icon art (E1e, 2026-11-25): the old icon (retro sunset) looked like one specific game. The art fills
+# the whole square; aplikacja/ikona.py cuts it into the macOS shape and adds the PL badge (letters are never drawn by AI).
+TLO_IKONY = ("App icon artwork that fills the ENTIRE square edge to edge: a smooth gradient background in the style's "
+             "colours with no border, no frame, no rounded corners, no vignette edge; the "
+             "subject centered and occupying about 60 percent of the square, bold and readable even at 32 pixels. ")
+IKONY = {
+    "ikona_mikrofon": "A classic studio microphone standing in front of a wireless game controller. ",
+    "ikona_dymek": "A wireless game controller with a large rounded speech bubble above it, the bubble holding three sound wave arcs. ",
+    "ikona_napisy": ("A wireless game controller at the bottom; above it a wide rounded subtitle bar holding two rows of abstract "
+                     "text lines (no real letters), and the right end of the bar breaks apart into flowing sound wave arcs — "
+                     "subtitles turning into a voice. No microphone. "),
+    "ikona_dymek_pad": ("A large rounded speech bubble with its tail at the bottom left; a wireless game controller sits inside the "
+                        "bubble, and three sound wave arcs come out of the bubble's right side — the game speaks. No microphone. "),
+    "ikona_glos": "A wireless game controller lying at the bottom with a large classic microphone rising behind it and three sound wave arcs on both sides of the microphone. ",
+}
+
 MODEL = {"nb": "nano-banana-2-1", "gpt": "gpt-image-2-text-to-image"}
+MODEL_WZOR = {"nb": "nano-banana-2-1", "gpt": "gpt-image-2-image-to-image"}  # with a reference image (--wzor)
+POLE_WZORU = {"nb": "image_input", "gpt": "input_urls"}
+UPLOAD = "https://kieai.redpandaai.co/api/file-base64-upload"
+O_WZORZE = ("Use the attached reference image ONLY as a layout sketch: keep its composition, placement and proportions, "
+            "and redraw everything as polished final artwork in the style described. ")
 
 
 def klucz():
@@ -70,6 +103,23 @@ def http(metoda, sciezka, k, dane=None):
         return json.loads(r.read())
 
 
+def wyslij_wzor(k, sciezka):
+    """Uploads a reference image (our own sketch) and returns its temporary URL on kie.ai."""
+    import base64
+    with open(sciezka, "rb") as f:
+        dane = base64.b64encode(f.read()).decode()
+    typ = "png" if sciezka.lower().endswith(".png") else "jpeg"
+    req = urllib.request.Request(UPLOAD, method="POST", headers={"Authorization": f"Bearer {k}", "Content-Type": "application/json"},
+                                 data=json.dumps({"base64Data": f"data:image/{typ};base64,{dane}", "fileName": os.path.basename(sciezka),
+                                                  "uploadPath": "uploads"}).encode())
+    with urllib.request.urlopen(req, timeout=60) as r:
+        d = json.loads(r.read())
+    url = (d.get("data") or {}).get("fileUrl") or (d.get("data") or {}).get("downloadUrl")
+    if d.get("code") != 200 or not url:
+        raise RuntimeError(f"wzór: {d}")
+    return url
+
+
 def saldo(k):
     d = http("GET", "/chat/credit", k)
     if d.get("code") != 200:
@@ -77,14 +127,19 @@ def saldo(k):
     return d.get("data")
 
 
-def renderuj(nazwa, k, silnik, wyniki, styl=STYL_DOMYSLNY, cel=CEL):
-    aspekt, rozdz, prompt = OBRAZY[nazwa]
-    prompt = prompt + OBIEKT + STYLE[styl]
+def renderuj(nazwa, k, silnik, wyniki, styl=STYL_DOMYSLNY, cel=CEL, wzor=None):
+    if nazwa in IKONY:
+        aspekt, rozdz, prompt = "1:1", "1K", IKONY[nazwa] + TLO_IKONY + STYLE[styl]
+    else:
+        aspekt, rozdz, prompt = OBRAZY[nazwa]
+        prompt = prompt + OBIEKT + STYLE[styl]
     try:
-        wej = {"prompt": prompt, "aspect_ratio": aspekt, "resolution": rozdz, "output_format": "png"}
+        wej = {"prompt": (O_WZORZE if wzor else "") + prompt, "aspect_ratio": aspekt, "resolution": rozdz, "output_format": "png"}
         if silnik == "gpt":
             wej.pop("output_format")
-        d = http("POST", "/jobs/createTask", k, {"model": MODEL[silnik], "input": wej})
+        if wzor:
+            wej[POLE_WZORU[silnik]] = [wzor]
+        d = http("POST", "/jobs/createTask", k, {"model": (MODEL_WZOR if wzor else MODEL)[silnik], "input": wej})
         if d.get("code") != 200 or not (d.get("data") or {}).get("taskId"):
             raise RuntimeError(f"createTask: {d}")
         tid, t0 = d["data"]["taskId"], time.time()
@@ -117,18 +172,20 @@ def main():
     ap.add_argument("--saldo", action="store_true")
     ap.add_argument("--styl", choices=sorted(STYLE), default=STYL_DOMYSLNY)
     ap.add_argument("--cel", default=CEL, help="output folder (default: ../panel/grafiki)")
+    ap.add_argument("--wzor", help="reference image (our own layout sketch) sent with every named image")
     a = ap.parse_args()
     k = klucz()
     przed = saldo(k)
     print("saldo kie.ai przed:", przed)
     if a.saldo:
         return
-    nazwy = a.nazwy or list(OBRAZY)
+    nazwy = a.nazwy or list(OBRAZY)  # icons only by name (one is chosen; the chosen art lives in aplikacja/ikona-zrodlo.jpg)
     wyniki, watki = {}, []
+    wzor = wyslij_wzor(k, a.wzor) if a.wzor else None
     for n in nazwy:
-        if n not in OBRAZY:
-            sys.exit(f"Nie znam obrazu „{n}” — znane: {', '.join(OBRAZY)}")
-        t = threading.Thread(target=renderuj, args=(n, k, a.silnik, wyniki, a.styl, a.cel))
+        if n not in OBRAZY and n not in IKONY:
+            sys.exit(f"Nie znam obrazu „{n}” — znane: {', '.join(list(OBRAZY) + list(IKONY))}")
+        t = threading.Thread(target=renderuj, args=(n, k, a.silnik, wyniki, a.styl, a.cel, wzor))
         t.start()
         watki.append(t)
     for t in watki:

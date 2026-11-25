@@ -1,4 +1,4 @@
--- Aplikacja „GTA Lektor”: uruchamia serwer panelu w oknie Terminala (jeśli nie działa) i otwiera panel w osobnym oknie Chrome.
+-- Aplikacja „Lektor Gier na konsoli”: uruchamia serwer panelu w oknie Terminala (jeśli nie działa) i otwiera panel w osobnym oknie Chrome.
 -- Serwer NIE może być dzieckiem tej aplikacji: macOS zabija procesy apletu, gdy ten kończy pracę.
 -- __KATALOG__ podmienia aplikacja/zbuduj.sh na folder, w którym leży repo (nie przenoś go potem bez ponownej budowy).
 set startCmd to "__KATALOG__/aplikacja/start-panel.command"
@@ -18,7 +18,7 @@ on error
 		end try
 	end repeat
 	if not gotowy then
-		display dialog "Panel lektora nie wystartował." & return & return & "Zajrzyj do okna Terminala „GTA Lektor” albo do ~/Library/Logs/gta-lektor.log" buttons {"OK"} default button 1 with icon caution
+		display dialog "Panel lektora nie wystartował." & return & return & "Zajrzyj do okna Terminala „Lektor Gier na konsoli” albo do ~/Library/Logs/gta-lektor.log" buttons {"OK"} default button 1 with icon caution
 		return
 	end if
 end try

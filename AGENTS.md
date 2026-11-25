@@ -1,8 +1,8 @@
 # AGENTS.md — manual dla AI (Claude Code, Codex i inne)
 
-Użytkownik dał Ci to repo, żebyś **zainstalował i uruchomił lektora gier na jego Macu** (program „Lektor Gier na
-konsoli”; aplikacja w `/Applications` nazywa się na razie „GTA Lektor” — dawna nazwa, zostaje, bo wskazują na nią
-ikonka w Docku i skrypty). Zwykle nie jest programistą:
+Użytkownik dał Ci to repo, żebyś **zainstalował i uruchomił lektora gier na jego Macu** (program i aplikacja
+„Lektor Gier na konsoli”; dawna nazwa aplikacji: „GTA Lektor” — jeśli stoi w `/Applications`, nowa jej nie zastępuje,
+użytkownik usuwa ją sam po pierwszym uruchomieniu nowej). Zwykle nie jest programistą:
 rozmawiaj z nim po polsku, prostym językiem, jeden krok naraz. Wszystko, co da się zrobić poleceniem, robisz Ty.
 Użytkownik robi tylko trzy rzeczy, których AI zrobić nie może: **klika zgody macOS**, **pobiera paczkę lektora**
 i **włącza grę / napisy w grze**. Pobieranie paczek z poziomu programu jeszcze nie istnieje — paczki pobiera człowiek.
@@ -21,10 +21,10 @@ i głośnikiem lektora.
 | `lektor.py` | silnik: paczka, dopasowanie, OCR, źródła obrazu, odtwarzanie (`--help`) |
 | `serwer_panelu.py` | serwer panelu i pilota, port 8797 (stdlib `ThreadingHTTPServer`) |
 | `panel/index.html` | cały interfejs (Mac i telefon w jednym pliku) |
-| `aplikacja/zbuduj.sh` | buduje `/Applications/GTA Lektor.app` + ikonki PWA |
+| `aplikacja/zbuduj.sh` | buduje `/Applications/Lektor Gier na konsoli.app` + ikonki PWA (z `aplikacja/ikona-zrodlo.jpg` przez `ikona.py`) |
 | `aplikacja/start-panel.command` | uruchamia serwer w oknie Terminala (aplikacja go woła) |
 | `instaluj.sh` | cała instalacja: `.venv`, pakiety, aplikacja, folder `paczki/` |
-| `Lektor GTA6.command` | stare menu w Terminalu (demo, karta, podgląd obszaru) |
+| `Lektor Gier na konsoli.command` | stare menu w Terminalu (demo, karta, podgląd obszaru) |
 | `paczki/` | folder gier: paczki `.zip` i opcjonalny film demo `.mp4` (poza gitem) |
 
 ## Instalacja — krok po kroku
@@ -34,7 +34,7 @@ i głośnikiem lektora.
 2. **Python 3.10+:** `instaluj.sh` sam go szuka. Gdy brak — zaproponuj `brew install python` (jeśli jest Homebrew)
    albo instalator z python.org. Nie używaj systemowego `/usr/bin/python3`, jeśli jest starszy niż 3.10.
 3. **Uruchom instalator:** `./instaluj.sh` (z folderu repo). Tworzy `.venv`, instaluje `requirements.txt`, sprawdza
-   import, buduje aplikację „GTA Lektor” w `/Applications`. Kod wyjścia ≠ 0 → przeczytaj komunikat, napraw, powtórz.
+   import, buduje aplikację „Lektor Gier na konsoli” w `/Applications`. Kod wyjścia ≠ 0 → przeczytaj komunikat, napraw, powtórz.
    Opcjonalnie `brew install ffmpeg` (okienko z filmem w demo, lista kart przechwytujących).
 4. **Paczka lektora (robi użytkownik):** zapytaj, w jaką grę gra, i poproś o pobranie paczki tej gry dla
    GameReadera 2.0 ze strony https://gamereader.pl oraz wrzucenie `.zip` do folderu `paczki/` (`open paczki`;
@@ -44,7 +44,7 @@ i głośnikiem lektora.
    `.venv/bin/python -c "import lektor as L; p=L.Paczka(L.znajdz('.zip','LEKTOR_PACZKA')); print(len(p.ids))"`
    (np. paczka GTA VI v4: ok. 373 tys. kwestii). Przy każdej grze panel pokazuje, jak bardzo jest sprawdzona
    („Sprawdzona na Xboxie”, „Próba na nagraniu gry”, „Może gubić kwestie”…) — powtórz to użytkownikowi uczciwie.
-5. **Pierwsze uruchomienie:** użytkownik klika „GTA Lektor” w Aplikacjach. Otwiera się okno Terminala z serwerem
+5. **Pierwsze uruchomienie:** użytkownik klika „Lektor Gier na konsoli” w Aplikacjach. Otwiera się okno Terminala z serwerem
    (ma zostać otwarte, można zminimalizować) i panel w oknie Chrome. Wymaga **Google Chrome**.
 6. **Test bez gry:** jeśli w `paczki/` jest film `.mp4` z napisami gry, przycisk „Demo” na ekranie gry zagra lektora
    (bez filmu: „Posłuchaj próbki” odtwarza kilka nagrań z paczki).
@@ -56,8 +56,8 @@ i głośnikiem lektora.
 | Kiedy | Okienko macOS | Co kliknąć |
 |---|---|---|
 | pierwsze „Graj” (gra zdalna) | „Terminal” chce nagrywać ekran | Zezwól → Ustawienia systemowe → Prywatność i ochrona → **Nagrywanie ekranu i dźwięku z systemu** → włącz **Terminal**; potem zamknij panel i otwórz aplikację ponownie (zgoda działa po restarcie procesu) |
-| pierwsze uruchomienie aplikacji | „GTA Lektor” chce dostęp do folderu (np. Dokumenty / Pobrane) | Zezwól |
-| aplikacja steruje Terminalem | „GTA Lektor” chce sterować „Terminal” | OK |
+| pierwsze uruchomienie aplikacji | „Lektor Gier na konsoli” chce dostęp do folderu (np. Dokumenty / Pobrane) | Zezwól |
+| aplikacja steruje Terminalem | „Lektor Gier na konsoli” chce sterować „Terminal” | OK |
 | karta przechwytująca | „Terminal” chce dostęp do kamery | Zezwól (karta udaje kamerę) |
 | pilot w iPhonie przy włączonej zaporze | „Python” chce przyjmować połączenia przychodzące | Zezwól |
 
@@ -87,14 +87,15 @@ pilot ma zostać otwarty). Z sieci serwer wpuszcza tylko z tajnym kluczem (pole 
 
 - **Log:** `~/Library/Logs/gta-lektor.log` (zawsze zacznij od niego). Linie `📱` = telefon, `🎙` = rozpoznana kwestia,
   `?` = napis bez dopasowania, `!` = ostrzeżenie.
-- **Lektor milczy w grze:** `Lektor GTA6.command` → opcja 4 zapisuje `podglad.png` i `podglad_obszar.png` — w drugim
+- **Lektor milczy w grze:** `Lektor Gier na konsoli.command` → opcja 4 zapisuje `podglad.png` i `podglad_obszar.png` — w drugim
   muszą być napisy. Nie ma → gra nie na pełnym ekranie albo brak zgody na nagrywanie ekranu.
 - **Port 8797 zajęty:** serwer już działa (`lsof -iTCP:8797 -sTCP:LISTEN`); otwórz `http://127.0.0.1:8797/`.
 - **Paczka:** katalog pusty albo komunikat „Nie widzę paczki wybranej gry” → `.zip` nie leży w folderze gier
   (`paczki/` albo `LEKTOR_PACZKI` z `lokalne.env`); „Nie widzę dysku” → dysk zewnętrzny z paczkami odłączony.
 - **Wyłączanie:** przycisk „Wyłącz program” w panelu kończy serwer (także gdy połączony jest pilot). Bez niego
   serwer kończy się po zamknięciu okna panelu, a przy połączonym pilocie dopiero po dłuższej ciszy telefonu.
-- **Przeniesiono folder repo:** uruchom ponownie `aplikacja/zbuduj.sh` (aplikacja zapamiętuje ścieżkę).
+- **Przeniesiono folder repo:** `LEKTOR_NADPISZ=1 aplikacja/zbuduj.sh` (aplikacja zapamiętuje ścieżkę; bez tej zmiennej
+  skrypt nie nadpisze aplikacji, która uruchamia inny folder — kod 6).
 - **Serwer testowy obok działającego:** `LEKTOR_PORT=8798 LEKTOR_USTAWIENIA=/tmp/x.json .venv/bin/python serwer_panelu.py`.
 
 ## Zasady dla Ciebie

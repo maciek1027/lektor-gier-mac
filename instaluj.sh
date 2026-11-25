@@ -1,6 +1,5 @@
 #!/bin/bash
-# Lektor gier — one-time setup: Python environment (.venv), packages, the app in /Applications (still named "GTA Lektor":
-# the Dock icon and the scripts point at that name).
+# Lektor gier — one-time setup: Python environment (.venv), packages, the app "Lektor Gier na konsoli" in /Applications.
 # Run in Terminal from this folder:  ./instaluj.sh
 set -u
 cd "$(dirname "$0")" || exit 1
@@ -33,7 +32,7 @@ command -v ffplay >/dev/null 2>&1 || command -v /opt/homebrew/bin/ffplay >/dev/n
   || echo "(opcjonalnie) Brak ffmpeg — demo zagra bez okienka z filmem. Instalacja: brew install ffmpeg"
 
 # 4. The app with an icon
-aplikacja/zbuduj.sh "${LEKTOR_APP:-/Applications/GTA Lektor.app}" || { echo "Budowa aplikacji nie powiodła się."; exit 5; }
+aplikacja/zbuduj.sh "${LEKTOR_APP:-/Applications/Lektor Gier na konsoli.app}" || { echo "Budowa aplikacji nie powiodła się."; exit 5; }
 
 # 5. Voice pack
 mkdir -p paczki
@@ -46,4 +45,4 @@ else
   open paczki 2>/dev/null
 fi
 echo
-echo "Gotowe. Uruchom lektora ikonką „GTA Lektor” w Aplikacjach (albo Launchpadzie). Pierwsze uruchomienie: zobacz README → „Pozwolenia macOS”."
+echo "Gotowe. Uruchom lektora ikonką „Lektor Gier na konsoli” w Aplikacjach (albo Launchpadzie). Pierwsze uruchomienie: zobacz README → „Pozwolenia macOS”."

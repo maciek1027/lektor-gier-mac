@@ -29,14 +29,12 @@ body{background:transparent}  /* a body background would cover the fixed #tlo la
 .mozaika img{width:100%;aspect-ratio:460/215;object-fit:cover;display:block;border-radius:8px}
 body.tlo-mozaika #tloMozaika{display:grid}
 body.tlo-mozaika #tlo::after{background:linear-gradient(180deg,rgba(10,10,13,.62) 0%,rgba(10,10,13,.42) 45%,rgba(10,10,13,.72) 100%)}
-/* game screen: the game's cover blurred over the whole page, fading into the theme colour */
-body.tlo-gra #tloRozmyta{display:block;background:var(--okladka) center/cover;filter:blur(40px) saturate(1.25) brightness(.6)}
-body.tlo-gra #tlo::after{background:linear-gradient(180deg,color-mix(in srgb,var(--tlo) 35%,transparent) 0%,color-mix(in srgb,var(--tlo) 72%,transparent) 50%,var(--tlo) 92%)}
 body.w-grafit #tlo{background:radial-gradient(120% 90% at 85% 0%,#2a2e36 0%,#15171c 55%,#0e0f12 100%)}
 body.w-granat #tlo{background:radial-gradient(120% 90% at 85% 0%,#1d2f5c 0%,#0d1730 55%,#080e1f 100%)}
 .wrap{max-width:820px;margin:0 auto;padding:22px 24px 40px}
 header{display:flex;align-items:center;gap:14px;margin-bottom:14px}
-.logo{width:52px;height:52px;border-radius:14px;background:var(--akcent);border:1px solid rgba(255,255,255,.22);display:grid;place-items:center;flex:none}
+.logo{width:52px;height:52px;border-radius:14px;overflow:hidden;border:1px solid rgba(255,255,255,.22);flex:none}
+.logo img{width:100%;height:100%;display:block}  /* the app icon itself (the same artwork as the Dock and iPhone icons) */
 .tytul{min-width:0}
 header .wylacz{background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)),rgba(14,15,19,.7);flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;font-size:13px}
 .wylacz svg{flex:none}
@@ -188,11 +186,11 @@ body:not(.tel) .telOnly{display:none!important}
 </style>
 </head>
 <body class="w-motyw">
-<div id="tlo"><div id="tloMozaika" class="mozaika"></div><div id="tloRozmyta"></div></div>
+<div id="tlo"><div id="tloMozaika" class="mozaika"></div></div>
 <div id="wylaczono"><div><h2>Program wyłączony</h2><p class="wylTxt">Możesz zamknąć to okno. Lektora włączysz znów ikonką na Macu.</p></div></div>
 <div class="wrap">
 <header>
-  <div class="logo"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><path d="M12 17v4M8 21h8"/></svg></div>
+  <div class="logo"><img src="/ikona-192.png" alt=""></div>
   <div class="tytul"><h1 id="nazwaApp">Lektor Gier na konsoli</h1><p class="sub">Polski lektor do gier — czyta napisy z gry</p></div>
   <div class="pill" id="pill">Łączę…</div>
   <button class="btn wylacz" id="wylacz" title="Wyłącz program" aria-label="Wyłącz program"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.6a8 8 0 1 0 11.4 0"/></svg><span class="napis">Wyłącz program</span></button>
@@ -390,9 +388,9 @@ function motyw(){  // Ustawienia → Wygląd: the game theme (the game on screen
   const id=(widok==="gra"&&graWidok)||(st&&st.gra&&st.gra.id)||(st&&st.ustawienia.gra), g=gra(id);
   const m=w==="motyw"&&g&&g.motyw?g.motyw:null, c=m||STALE[w]||STALE.klasyczny;
   const tryb=m?"motyw":(w==="motyw"?"klasyczny":w);
-  // background: the game screen shows its own cover (game theme); the catalogue and settings a wall of all covers;
-  // Grafit / Granat stay plain. No covers yet (empty folder, no disk) = the plain neutral gradient.
-  const naGrze=widok==="gra"&&OKL[graWidok], tlo=["grafit","granat"].includes(w)?"tlo-staly":(naGrze&&w==="motyw"?"tlo-gra":"tlo-mozaika");
+  // background: a wall of all covers on every screen (operator 2026-11-25: variant C — the game screen too, in the game's
+  // colours; its own cover stays in the banner); Grafit / Granat stay plain. No covers yet = the plain neutral gradient.
+  const naGrze=widok==="gra"&&OKL[graWidok], tlo=["grafit","granat"].includes(w)?"tlo-staly":"tlo-mozaika";
   document.body.className=(document.body.className.replace(/\b(w|tlo)-\S+/g,"")+" w-"+tryb+" "+tlo).replace(/\s+/g," ").trim();
   const s=document.documentElement.style; s.setProperty("--akcent",c.akcent); s.setProperty("--akcent2",c.akcent2); s.setProperty("--tlo",c.tlo);
   s.setProperty("--okladka",naGrze?`url("${OKL[graWidok].url}")`:"none");
@@ -747,8 +745,12 @@ document.addEventListener("visibilitychange",()=>{
   if(st){ const u=st.ustawienia; $("cam").value=u.kamera||0;
     setZrodlo(u.zrodlo==="kamera"?"kamera":"ekran"); setProfil(u.profil||"tv_mac",false); }
   await wczytajKatalog();
+  // The program always starts on "Moje gry" (the Dock icon and the iPhone icon open an address without an anchor), also
+  // with a game chosen or the reader running — the catalogue shows both (✓ wybrana / ▶ czyta, the Stop bar). An address
+  // WITH an anchor (a page reloaded after a new version, a bookmark) stays on its own view.
   const [w,id]=zHasha(), wyb=st&&(st.ustawienia.gra||(st.gra&&st.gra.id));
-  if(w) pokaz(w,id); else if(wyb) pokaz("gra",wyb); else pokaz("katalog");  // a chosen game opens straight on its screen
+  if(wyb&&gra(wyb)) graWidok=wyb;  // the header keeps a one-click tab back to the chosen game
+  pokaz(w||"katalog",id);
   await devices(false);
   tickT=setInterval(tick,1000);
 })();

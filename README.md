@@ -41,8 +41,8 @@ i wklej:
 
 > Zainstaluj mi lektora gier z https://github.com/maciek1027/gta-lektor-mac — postępuj według pliku AGENTS.md z tego repo.
 
-AI pobierze program, przygotuje go i zbuduje aplikację z ikonką (w Aplikacjach nazywa się na razie **„GTA Lektor”**
-— to dawna nazwa programu). Ty zrobisz tylko trzy rzeczy:
+AI pobierze program, przygotuje go i zbuduje aplikację z ikonką **„Lektor Gier na konsoli”** w Aplikacjach. Ty zrobisz
+tylko trzy rzeczy:
 
 1. **Dodasz grę:** pobierzesz paczkę lektora z [gamereader.pl](https://gamereader.pl) i wrzucisz plik `.zip`
    do folderu gier (`paczki`; AI pokaże Ci gdzie, a w panelu jest kafelek „＋ Dodaj grę” z przyciskiem
@@ -67,17 +67,18 @@ Testy: `.venv/bin/python -m unittest discover -s testy`.
 
 ## Pierwsze uruchomienie — zgody macOS
 
-Uruchom **GTA Lektor** z Aplikacji. Otworzy się małe okno Terminala (serwer lektora — nie zamykaj go, możesz
+Uruchom **Lektor Gier na konsoli** z Aplikacji. Otworzy się małe okno Terminala (serwer lektora — nie zamykaj go, możesz
 zminimalizować) i panel w oknie Chrome. macOS zapyta o kilka rzeczy — na wszystko odpowiedz **Zezwól / OK**:
 
 - **Nagrywanie ekranu dla „Terminal”** — bez tego lektor nie widzi napisów. Ustawienia systemowe → Prywatność
   i ochrona → Nagrywanie ekranu i dźwięku z systemu → włącz Terminal. Potem wyłącz program i otwórz go jeszcze raz.
-- **Dostęp do folderu** (np. Dokumenty albo Pobrane) dla „GTA Lektor”.
-- **„GTA Lektor” chce sterować Terminalem** — OK.
+- **Dostęp do folderu** (np. Dokumenty albo Pobrane) dla „Lektor Gier na konsoli”.
+- **„Lektor Gier na konsoli” chce sterować Terminalem** — OK.
 - Przy karcie przechwytującej: **kamera** dla Terminala. Przy pilocie z włączoną zaporą: **połączenia przychodzące** dla Pythona.
 
 **Wyłączanie:** przycisk „Wyłącz program” w prawym górnym rogu panelu zatrzymuje lektora i serwer. Włączasz go znów
-ikonką „GTA Lektor”.
+ikonką „Lektor Gier na konsoli”. Masz jeszcze starą aplikację **„GTA Lektor”** (dawna nazwa)? Po pierwszym
+uruchomieniu nowej możesz ją usunąć z Aplikacji i wyciągnąć jej ikonkę z Docka.
 
 ## Ustawienia w grze
 
